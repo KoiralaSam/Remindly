@@ -1,0 +1,16 @@
+name: CI Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: npm install  # Change this for Python (pip install -r requirements.txt) or other languages
+
+      - name: Run Tests
+        run: npm test  # Change this for your test command
