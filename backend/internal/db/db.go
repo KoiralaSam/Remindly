@@ -17,7 +17,7 @@ func InitDB(ctx context.Context, dbURL string) error {
 		return err
 	}
 
-	Pool, err := pgxpool.NewWithConfig(ctx, config)
+	Pool, err = pgxpool.NewWithConfig(ctx, config)
 
 	if err != nil {
 		return err

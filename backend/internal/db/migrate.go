@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 func RunMigrations(db *sql.DB, migrationsDir string) error {
-
 	err := goose.SetDialect("postgres")
 
 	if err != nil {

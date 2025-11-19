@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/KoiralaSam/Remindly/server/internal/db"
-	"github.com/KoiralaSam/Remindly/server/internal/routes"
+	"github.com/KoiralaSam/Remindly/backend/internal/db"
+	"github.com/KoiralaSam/Remindly/backend/internal/routes"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -38,7 +38,7 @@ func main() {
 
 	dbAdapter := db.SqlDB(pool)
 
-	err = db.RunMigrations(dbAdapter, "migrations")
+	err = db.RunMigrations(dbAdapter, "../../migrations")
 
 	if err != nil {
 		log.Fatalf("Error running migrations: %v", err)
