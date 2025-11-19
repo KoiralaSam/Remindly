@@ -1,9 +1,13 @@
 package routes
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func SetupRoutes(server *gin.Engine) {
-	server.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "Hello, World!"})
+	server.GET("/ping", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 }
