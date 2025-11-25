@@ -37,3 +37,23 @@ func (u *User) Save() (string, error) {
 	return u.ID, nil
 
 }
+
+func (u *User) ValidateCredentials() error {
+	query := `SELECT id, password_hash FROM users WHERE email = $1`
+
+	var hashedPassword string
+
+	err := db.GetDB().QueryRow(context.Background(), query, u.Email).Scan(&u.ID, &hashedPassword)
+
+	if err != nil {
+		return errors.New("invalid credentials")
+	}
+
+	err = utils.ComparePassword(hashedPassword, u.PasswordHash)
+
+	if err != nil {
+		return errors.New("invalid credentials")
+	}
+
+	return nil
+}
