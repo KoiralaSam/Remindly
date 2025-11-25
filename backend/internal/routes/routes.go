@@ -7,4 +7,6 @@ import (
 
 func SetupRoutes(server *gin.Engine) {
 	server.POST("/api/auth/register", handlers.RegisterUser)
+	
+	server.POST("/api/groups", handlers.CreateGroup)
 }
