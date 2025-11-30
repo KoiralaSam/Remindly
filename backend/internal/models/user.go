@@ -19,22 +19,22 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func (u *User) Save() (string, error) {
+func (u *User) Save() error {
 	query := `INSERT INTO users (name, email, phone, password) VALUES ($1, $2, $3, $4) RETURNING id`
 
 	hashedPassword, err := utils.HashPassword(u.Password)
 
 	if err != nil {
-		return "", errors.New("failed to hash password: " + err.Error())
+		return errors.New("failed to hash password: " + err.Error())
 	}
 
 	err = db.GetDB().QueryRow(context.Background(), query, u.Name, u.Email, u.Phone, hashedPassword).Scan(&u.ID)
 
 	if err != nil {
-		return "", errors.New("failed to save user: " + err.Error())
+		return errors.New("failed to save user: " + err.Error())
 	}
 
-	return u.ID, nil
+	return nil
 
 }
 
