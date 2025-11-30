@@ -57,3 +57,15 @@ func (u *User) ValidateCredentials() error {
 
 	return nil
 }
+
+func (u *User) Get() error {
+	query := `SELECT id, name, email, phone, created_at FROM users WHERE id = $1`
+
+	err := db.GetDB().QueryRow(context.Background(), query, u.ID).Scan(&u.ID, &u.Name, &u.Email, &u.Phone, &u.CreatedAt)
+
+	if err != nil {
+		return errors.New("failed to get user: " + err.Error())
+	}
+
+	return nil
+}

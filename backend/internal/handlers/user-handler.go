@@ -108,3 +108,16 @@ func Logout(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
+
+func GetUser(ctx *gin.Context) {
+	userId := ctx.GetString("userID")
+	user := &models.User{
+		ID: userId,
+	}
+	err := user.Get()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"id": user.ID, "name": user.Name, "email": user.Email, "phone": user.Phone, "created_at": user.CreatedAt})
+}
