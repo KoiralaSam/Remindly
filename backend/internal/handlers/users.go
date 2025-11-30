@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
@@ -22,14 +21,14 @@ func RegisterUser(ctx *gin.Context) {
 	id, err := user.Save()
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	token, err := utils.GenerateToken(id, user.Name, user.Email)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -42,21 +41,21 @@ func Login(ctx *gin.Context) {
 	err := ctx.ShouldBindJSON(&user)
 
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": errors.New("invalid request body")})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
 	err = user.ValidateCredentials()
 
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("invalid credentials")})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
 	token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": errors.New("failed to generate token")})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
 
