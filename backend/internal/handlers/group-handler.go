@@ -19,7 +19,7 @@ func CreateGroup(ctx *gin.Context){
 		return
 	}
 
-	// group.CreatedBy = createdByUserId
+	group.CreatedBy = "0460f3d4-d480-49b0-b5dd-970f220e13d8"
 	err = group.Create()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
