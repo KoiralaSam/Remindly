@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/KoiralaSam/Remindly/backend/internal/models"
 	"github.com/KoiralaSam/Remindly/backend/internal/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -16,16 +17,27 @@ func AuthMiddleware(ctx *gin.Context) {
 		return
 	}
 
-	tokenClaims, err := utils.VerifyToken(token)
+	authDetails, err := utils.VerifyToken(token)
 
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("unauthorized")})
 		return
 	}
 
-	ctx.Set("userID", tokenClaims.UserID)
-	ctx.Set("email", tokenClaims.Email)
-	ctx.Set("name", tokenClaims.Name)
+	auth, err := models.FetchAuth(authDetails)
+
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("unauthorized")})
+		return
+	}
+
+	if auth == nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("unauthorized")})
+		return
+	}
+
+	ctx.Set("userID", auth.UserID)
+	ctx.Set("authUUID", auth.AuthUUID)
 
 	ctx.Next()
 }

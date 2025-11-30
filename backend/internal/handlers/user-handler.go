@@ -25,7 +25,23 @@ func RegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	token, err := utils.GenerateToken(id, user.Name, user.Email)
+	auth := &models.Auth{
+		UserID: id,
+	}
+
+	auth, err = auth.Create()
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var authDetails utils.AuthDetails
+
+	authDetails.UserID = id
+	authDetails.AuthUuid = auth.AuthUUID
+
+	token, err := utils.GenerateToken(authDetails)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -51,8 +67,23 @@ func Login(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
+	auth := &models.Auth{
+		UserID: user.ID,
+	}
 
-	token, err := utils.GenerateToken(user.ID, user.Name, user.Email)
+	auth, err = auth.Create()
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var authDetails utils.AuthDetails
+
+	authDetails.UserID = user.ID
+	authDetails.AuthUuid = auth.AuthUUID
+
+	token, err := utils.GenerateToken(authDetails)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
@@ -61,4 +92,19 @@ func Login(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"token": token})
 
+}
+
+func Logout(ctx *gin.Context) {
+	authUuid := ctx.GetString("authUUID")
+	userId := ctx.GetString("userID")
+	authDetails := &utils.AuthDetails{
+		AuthUuid: authUuid,
+		UserID:   userId,
+	}
+	err := models.DeleteAuth(authDetails)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
