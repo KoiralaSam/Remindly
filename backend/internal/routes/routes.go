@@ -18,5 +18,9 @@ func SetupRoutes(server *gin.Engine) {
 	authenticated.GET("/users/me", handlers.GetUser)
 	authenticated.PATCH("/users/me", handlers.UpdateUser)
 
-	authenticated.POST("/groups/:groupID/members", handlers.AddGroupMember)
+	authenticatedGroupMember := authenticated.Group("/groups/:groupID")
+	authenticatedGroupMember.Use(middleware.AuthGroupMemberMiddleware)
+
+	authenticatedGroupMember.POST("/members", handlers.AddGroupMember)
+	authenticatedGroupMember.GET("/members", handlers.GetGroupMembers)
 }

@@ -38,6 +38,7 @@ func AuthMiddleware(ctx *gin.Context) {
 
 	ctx.Set("userID", auth.UserID)
 	ctx.Set("authUUID", auth.AuthUUID)
+	ctx.Set("token", token)
 
 	ctx.Next()
 }
