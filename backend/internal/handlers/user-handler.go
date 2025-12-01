@@ -9,7 +9,7 @@ import (
 )
 
 func RegisterUser(ctx *gin.Context) {
-	var user models.User
+	user := &models.User{}
 
 	err := ctx.ShouldBindJSON(&user)
 
@@ -18,7 +18,7 @@ func RegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	id, err := user.Save()
+	err = user.Save()
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -26,7 +26,7 @@ func RegisterUser(ctx *gin.Context) {
 	}
 
 	auth := &models.Auth{
-		UserID: id,
+		UserID: user.ID,
 	}
 
 	auth, err = auth.Create()
@@ -38,7 +38,7 @@ func RegisterUser(ctx *gin.Context) {
 
 	var authDetails utils.AuthDetails
 
-	authDetails.UserID = id
+	authDetails.UserID = user.ID
 	authDetails.AuthUuid = auth.AuthUUID
 
 	token, err := utils.GenerateToken(authDetails)
@@ -48,7 +48,7 @@ func RegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"token": token})
+	ctx.JSON(http.StatusCreated, gin.H{"token": token, "id": user.ID, "name": user.Name, "email": user.Email})
 }
 
 func Login(ctx *gin.Context) {
@@ -90,7 +90,7 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"token": token})
+	ctx.JSON(http.StatusOK, gin.H{"token": token, "id": user.ID, "name": user.Name, "email": user.Email})
 
 }
 
@@ -107,4 +107,55 @@ func Logout(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+func GetUser(ctx *gin.Context) {
+	userId := ctx.GetString("userID")
+	user := &models.User{
+		ID: userId,
+	}
+	err := user.Get()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"id": user.ID, "name": user.Name, "email": user.Email, "phone": user.Phone, "created_at": user.CreatedAt})
+}
+
+func UpdateUser(ctx *gin.Context) {
+	userId := ctx.GetString("userID")
+
+	var updateData struct {
+		Name  *string `json:"name"`
+		Email *string `json:"email"`
+		Phone *string `json:"phone"`
+	}
+
+	err := ctx.ShouldBindJSON(&updateData)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user := &models.User{
+		ID: userId,
+	}
+
+	if updateData.Name != nil {
+		user.Name = *updateData.Name
+	}
+	if updateData.Email != nil {
+		user.Email = *updateData.Email
+	}
+	if updateData.Phone != nil {
+		user.Phone = *updateData.Phone
+	}
+
+	err = user.Update()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"id": user.ID, "name": user.Name, "email": user.Email, "phone": user.Phone, "updated_at": user.UpdatedAt})
 }
