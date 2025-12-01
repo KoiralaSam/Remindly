@@ -95,3 +95,15 @@ func (u *User) Update() error {
 
 	return nil
 }
+
+func (u *User) GetByEmail() error {
+	query := `SELECT id, name, email, phone FROM users WHERE email = $1`
+
+	err := db.GetDB().QueryRow(context.Background(), query, u.Email).Scan(&u.ID, &u.Name, &u.Email, &u.Phone)
+
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	return nil
+}
