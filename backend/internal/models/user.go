@@ -69,3 +69,29 @@ func (u *User) Get() error {
 
 	return nil
 }
+
+func (u *User) Update() error {
+	var nameValue interface{} = nil
+	var emailValue interface{} = nil
+	var phoneValue interface{} = nil
+
+	if u.Name != "" {
+		nameValue = u.Name
+	}
+	if u.Email != "" {
+		emailValue = u.Email
+	}
+	if u.Phone != "" {
+		phoneValue = u.Phone
+	}
+
+	query := `UPDATE users SET name = COALESCE($1, name), email = COALESCE($2, email), phone = COALESCE($3, phone), updated_at = NOW() WHERE id = $4 RETURNING id, name, email, phone, updated_at`
+
+	err := db.GetDB().QueryRow(context.Background(), query, nameValue, emailValue, phoneValue, u.ID).Scan(&u.ID, &u.Name, &u.Email, &u.Phone, &u.UpdatedAt)
+
+	if err != nil {
+		return errors.New("failed to update user: " + err.Error())
+	}
+
+	return nil
+}
