@@ -55,3 +55,34 @@ func AddGroupMember(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusCreated, gin.H{"message": "Group member added successfully"})
 }
+
+func GetGroupMembers(ctx *gin.Context) {
+	groupID := ctx.Param("groupID")
+
+	groupMember := &models.GroupMember{
+		GroupID: groupID,
+	}
+
+	groupMembers, err := groupMember.GetByGroupID()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var userID string = ctx.GetString("userID")
+
+	var isMember bool = false
+	for _, member := range groupMembers {
+		if member.UserID == userID {
+			isMember = true
+			break
+		}
+	}
+	if isMember {
+		ctx.JSON(http.StatusOK, gin.H{"group_members": groupMembers})
+		return
+	} else {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user is not a member of given group"})
+		return
+	}
+}

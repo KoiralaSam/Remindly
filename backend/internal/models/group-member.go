@@ -34,9 +34,9 @@ func (gm *GroupMember) Get() error {
 	return nil
 }
 
-func (gm *GroupMember) GetByGroupID(groupID string) ([]GroupMember, error) {
+func (gm *GroupMember) GetByGroupID() ([]GroupMember, error) {
 	query := `SELECT id, group_id, user_id, role, created_at FROM group_members WHERE group_id = $1`
-	rows, err := db.GetDB().Query(context.Background(), query, groupID)
+	rows, err := db.GetDB().Query(context.Background(), query, gm.GroupID)
 	if err != nil {
 		return nil, errors.New("failed to get group members: " + err.Error())
 	}
@@ -53,9 +53,9 @@ func (gm *GroupMember) GetByGroupID(groupID string) ([]GroupMember, error) {
 	return groupMembers, nil
 }
 
-func (gm *GroupMember) GetByUserID(userID string) ([]GroupMember, error) {
+func (gm *GroupMember) GetByUserID() ([]GroupMember, error) {
 	query := `SELECT id, group_id, user_id, role, created_at FROM group_members WHERE user_id = $1`
-	rows, err := db.GetDB().Query(context.Background(), query, userID)
+	rows, err := db.GetDB().Query(context.Background(), query, gm.UserID)
 	if err != nil {
 		return nil, errors.New("failed to get group members: " + err.Error())
 	}

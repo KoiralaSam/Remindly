@@ -16,7 +16,7 @@ type Group struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-func (group Group) Create() error{
+func (group *Group) Create() error {
 	query := `
 		INSERT INTO groups (name, description, created_by)
 		VALUES ($1, $2, $3)
@@ -28,6 +28,3 @@ func (group Group) Create() error{
 	}
 	return nil
 }
-
-
-
