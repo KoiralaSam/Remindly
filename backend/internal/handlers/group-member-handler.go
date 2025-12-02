@@ -41,6 +41,14 @@ func AddGroupMember(ctx *gin.Context) {
 		return
 	}
 
+	// Check if the requester's role has permission to add the target role
+	requesterRole := ctx.GetString("role")
+	canAdd := models.CanModifyRole(requesterRole, requestBody.Role)
+	if !canAdd {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to add this role"})
+		return
+	}
+
 	groupMember := &models.GroupMember{
 		GroupID: groupID,
 		UserID:  userID,
@@ -69,20 +77,62 @@ func GetGroupMembers(ctx *gin.Context) {
 		return
 	}
 
-	var userID string = ctx.GetString("userID")
+	ctx.JSON(http.StatusOK, gin.H{"group_members": groupMembers})
 
-	var isMember bool = false
-	for _, member := range groupMembers {
-		if member.UserID == userID {
-			isMember = true
-			break
-		}
+}
+
+func UpdateGroupMemberRole(ctx *gin.Context) {
+	groupID := ctx.Param("groupID")
+	userID := ctx.Param("userId")
+
+	var requestBody struct {
+		Role string `json:"role" binding:"required"`
 	}
-	if isMember {
-		ctx.JSON(http.StatusOK, gin.H{"group_members": groupMembers})
-		return
-	} else {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user is not a member of given group"})
+
+	err := ctx.ShouldBindJSON(&requestBody)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	groupMember := &models.GroupMember{
+		GroupID: groupID,
+		UserID:  userID,
+	}
+	// Check if the updater is a member of the group
+	isMember, err := groupMember.IsMember()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	// If the user is not a member of the group, return an unauthorized error
+	if !isMember {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Non-member cannot update role"})
+		return
+	}
+
+	// Check if the requester's role has permission to update the target role
+	requesterMember := &models.GroupMember{
+		GroupID: groupID,
+		UserID:  ctx.GetString("userID"),
+	}
+	err = requesterMember.Get()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	requesterRole := requesterMember.Role
+	canUpdate := models.CanModifyRole(requesterRole, requestBody.Role)
+	if !canUpdate {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to update this role"})
+		return
+	}
+
+	err = groupMember.UpdateRole(requestBody.Role)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Group member role updated successfully"})
 }
