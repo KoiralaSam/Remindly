@@ -82,7 +82,7 @@ func (gm *GroupMember) UpdateRole(role string) error {
 }
 
 func (gm *GroupMember) Delete() error {
-	query := `DELETE from group_members group_id = $2 AND user_id = $3`
+	query := `DELETE FROM group_members WHERE group_id = $1 AND user_id = $2`
 	_, err := db.GetDB().Exec(context.Background(), query, gm.GroupID, gm.UserID)
 	if err != nil {
 		return errors.New("failed to delete group member: " + err.Error())
