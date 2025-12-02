@@ -136,3 +136,47 @@ func UpdateGroupMemberRole(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Group member role updated successfully"})
 }
+
+func DeleteGroupMember(ctx *gin.Context) {
+	groupID := ctx.Param("groupID")
+	userID := ctx.Param("userId")
+
+	// Get the requester's role to check permissions
+	requesterMember := &models.GroupMember{
+		GroupID: groupID,
+		UserID:  ctx.GetString("userID"),
+	}
+	err := requesterMember.Get()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	requesterRole := requesterMember.Role
+
+	// Get the target member to check their role and verify they exist
+	targetMember := &models.GroupMember{
+		GroupID: groupID,
+		UserID:  userID,
+	}
+	err = targetMember.Get()
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "group member not found"})
+		return
+	}
+
+	// Check if requester has permission to delete the target member's role
+	canDelete := models.CanModifyRole(requesterRole, targetMember.Role)
+	if !canDelete {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to delete this member"})
+		return
+	}
+
+	// Delete the member
+	err = targetMember.Delete()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Group member deleted successfully"})
+}
