@@ -136,3 +136,59 @@ func UpdateGroupMemberRole(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Group member role updated successfully"})
 }
+
+func DeleteGroupMember(ctx *gin.Context) {
+	groupID := ctx.Param("groupID")
+	userID := ctx.Param("userId")
+
+	var requestBody struct {
+		Role string `json:"role" binding:"required"`
+	}
+
+	err := ctx.ShouldBindJSON(&requestBody)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	groupMember := &models.GroupMember{
+		GroupID: groupID,
+		UserID:  userID,
+	}
+	// Check if the updater is a member of the group
+	isMember, err := groupMember.IsMember()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	// If the user is not a member of the group, return an unauthorized error
+	if !isMember {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Non-member cannot update role"})
+		return
+	}
+
+	// Check if the requester's role has permission to update the target role
+	requesterMember := &models.GroupMember{
+		GroupID: groupID,
+		UserID:  ctx.GetString("userID"),
+	}
+	err = requesterMember.Get()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	requesterRole := requesterMember.Role
+	canDelete := models.CanModifyRole(requesterRole, requestBody.Role)
+	if !canDelete {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission for this operation"})
+		return
+	}
+
+	err = groupMember.Delete()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Group member role updated successfully"})
+}
