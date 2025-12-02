@@ -13,7 +13,7 @@ type Role struct {
 }
 
 func (mr *Role) GetAllRoles() ([]Role, error) {
-	query := `SELECT role, description FROM member_roles`
+	query := `SELECT role, description FROM group_roles`
 	rows, err := db.GetDB().Query(context.Background(), query)
 	if err != nil {
 		return nil, err

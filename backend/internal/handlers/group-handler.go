@@ -28,6 +28,20 @@ func CreateGroup(ctx *gin.Context){
 		return
 	}
 
+	// Automatically add the creator as an owner member
+	groupMember := &models.GroupMember{
+		GroupID: group.ID,
+		UserID:  createdByUserId,
+		Role:    "owner",
+	}
+	err = groupMember.Save()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Group created but failed to add creator as member!", 
+		})
+		return
+	}
+
 	ctx.JSON(http.StatusCreated, gin.H{
 		"message": "Group created successfully!",
 		"group": group,
