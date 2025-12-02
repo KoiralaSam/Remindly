@@ -23,4 +23,6 @@ func SetupRoutes(server *gin.Engine) {
 
 	authenticatedGroupMember.POST("/members", handlers.AddGroupMember)
 	authenticatedGroupMember.GET("/members", handlers.GetGroupMembers)
+	authenticatedGroupMember.PATCH("members/:userId", handlers.UpdateGroupMemberRole)
+	//authenticatedGroupMember.DELETE("members/:userId", handlers.DeleteGroupMember)
 }

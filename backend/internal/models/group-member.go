@@ -26,8 +26,8 @@ func (gm *GroupMember) Save() error {
 }
 
 func (gm *GroupMember) Get() error {
-	query := `SELECT id, group_id, user_id, role, created_at FROM group_members WHERE id = $1`
-	err := db.GetDB().QueryRow(context.Background(), query, gm.ID).Scan(&gm.ID, &gm.GroupID, &gm.UserID, &gm.Role, &gm.CreatedAt)
+	query := `SELECT id, group_id, user_id, role, created_at FROM group_members WHERE group_id = $1 AND user_id = $2`
+	err := db.GetDB().QueryRow(context.Background(), query, gm.GroupID, gm.UserID).Scan(&gm.ID, &gm.GroupID, &gm.UserID, &gm.Role, &gm.CreatedAt)
 	if err != nil {
 		return errors.New("failed to get group member: " + err.Error())
 	}
@@ -70,4 +70,26 @@ func (gm *GroupMember) GetByUserID() ([]GroupMember, error) {
 		groupMembers = append(groupMembers, member)
 	}
 	return groupMembers, nil
+}
+
+func (gm *GroupMember) UpdateRole(role string) error {
+	query := `UPDATE group_members SET role = $1 WHERE group_id = $2 AND user_id = $3`
+	_, err := db.GetDB().Exec(context.Background(), query, role, gm.GroupID, gm.UserID)
+	if err != nil {
+		return errors.New("failed to update group member role: " + err.Error())
+	}
+	return nil
+}
+
+func (gm *GroupMember) IsMember() (bool, error) {
+	query := `SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2`
+	rows, err := db.GetDB().Query(context.Background(), query, gm.GroupID, gm.UserID)
+	if err != nil {
+		return false, errors.New("failed to check if group member is a member: " + err.Error())
+	}
+	defer rows.Close()
+	for rows.Next() {
+		return true, nil
+	}
+	return false, nil
 }
