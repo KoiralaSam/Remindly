@@ -11,3 +11,9 @@ import (
 func SqlDB(pool *pgxpool.Pool) *sql.DB {
 	return stdlib.OpenDBFromPool(pool)
 }
+
+// NewMigrationConnection creates a direct database connection for migrations
+// This avoids prepared statement conflicts when using connection pools
+func NewMigrationConnection(dbURL string) (*sql.DB, error) {
+	return sql.Open("pgx", dbURL)
+}

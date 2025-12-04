@@ -27,5 +27,14 @@ func AuthGroupMemberMiddleware(ctx *gin.Context) {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user is not a member of given group"})
 		return
 	}
+
+	// Fetch the requester's role and set it in the context
+	err = checkMember.Get()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.Set("role", checkMember.Role)
+
 	ctx.Next()
 }
