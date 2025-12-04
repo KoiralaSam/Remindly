@@ -7,7 +7,6 @@ CREATE TABLE task_statuses (
 
 INSERT INTO task_statuses (status, description) VALUES
     ('pending', 'Task is waiting for approval'),
-    ('approved', 'Task has been approved and is active'),
     ('rejected', 'Task has been rejected'),
     ('active', 'Task is currently active'),
     ('completed', 'Task has been completed'),
