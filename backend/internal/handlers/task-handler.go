@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
@@ -69,4 +70,47 @@ func CreateTask(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{"task": task})
+}
+
+func GetGroupTasks(ctx *gin.Context) {
+	groupID := ctx.Param("groupID")
+	var limit int64 = 10
+	var offset int64 = 0
+	var err error
+
+	status, provided := ctx.GetQuery("status")
+	if !provided {
+		status = ""
+	}
+	assignee, provided := ctx.GetQuery("assignee")
+	if !provided {
+		assignee = ""
+	}
+
+	limitStr, provided := ctx.GetQuery("limit")
+	if provided {
+		limit, err = strconv.ParseInt(limitStr, 10, 64)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit format. Use integer"})
+			return
+		}
+	}
+
+	offsetStr, provided := ctx.GetQuery("offset")
+	if provided {
+		offset, err = strconv.ParseInt(offsetStr, 10, 64)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset format. Use integer"})
+			return
+		}
+	}
+
+	tasks, total, err := models.GetTasksByGroupID(ctx.Request.Context(), groupID, status, assignee, limit, offset)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"tasks": tasks, "total": total})
 }

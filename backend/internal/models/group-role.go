@@ -56,7 +56,7 @@ func GetAddableRoles(adderRole string) []string {
 	permissions := map[string][]string{
 		"owner":  {"owner", "admin", "member", "viewer"},
 		"admin":  {"member", "viewer"},
-		"member": {"member"},
+		"member": {}, // Members cannot add anyone (consistent with CanModifyRole)
 		"viewer": {},
 	}
 
