@@ -158,3 +158,15 @@ func GetUserTasks(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"tasks": tasks, "total": total})
 }
+
+func GetTaskByIDWithAssignees(ctx *gin.Context) {
+	taskID := ctx.Param("taskId")
+
+	task, err := models.GetTaskByIDWithAssignees(ctx.Request.Context(), taskID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"task": task})
+}

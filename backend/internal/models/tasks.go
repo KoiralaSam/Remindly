@@ -21,6 +21,11 @@ type Task struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type TaskWithAssignees struct {
+	Task
+	Assignees []string `json:"assignees"`
+}
+
 func (t *Task) CreateTask(ctx context.Context) error {
 	query := `INSERT INTO tasks (group_id, title, description, due_date, created_by, status) 
 	          VALUES ($1, $2, $3, $4, $5, $6) 
@@ -140,4 +145,40 @@ func GetTasksByUserID(ctx context.Context, userID string, status string, assigne
 	}
 
 	return tasks, total, nil
+}
+
+func GetTaskByIDWithAssignees(ctx context.Context, taskID string) (*TaskWithAssignees, error) {
+	// Get the task with all assignees using ARRAY_AGG
+	query := `SELECT tasks.id, tasks.group_id, tasks.title, tasks.description, tasks.due_date, tasks.status, tasks.created_by, tasks.created_at, tasks.updated_at, 
+	          COALESCE(ARRAY_AGG(task_assignments.user_id) FILTER (WHERE task_assignments.user_id IS NOT NULL), ARRAY[]::uuid[]) AS assignees 
+	          FROM tasks 
+	          LEFT JOIN task_assignments ON tasks.id = task_assignments.task_id 
+	          WHERE tasks.id = $1 
+	          GROUP BY tasks.id, tasks.group_id, tasks.title, tasks.description, tasks.due_date, tasks.status, tasks.created_by, tasks.created_at, tasks.updated_at`
+
+	var task Task
+	var assignees []string
+	err := db.GetDB().QueryRow(ctx, query, taskID).Scan(
+		&task.ID,
+		&task.GroupID,
+		&task.Title,
+		&task.Description,
+		&task.DueDate,
+		&task.Status,
+		&task.CreatedBy,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+		&assignees,
+	)
+
+	if err != nil {
+		return nil, errors.New("failed to get task: " + err.Error())
+	}
+
+	taskWithAssignees := &TaskWithAssignees{
+		Task:      task,
+		Assignees: assignees,
+	}
+
+	return taskWithAssignees, nil
 }
