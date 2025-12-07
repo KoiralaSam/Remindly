@@ -100,7 +100,7 @@ func UpdateGroupMemberRole(ctx *gin.Context) {
 		UserID:  userID,
 	}
 	// Check if the updater is a member of the group
-	isMember, err := groupMember.IsMember()
+	isMember, err := groupMember.IsMember(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

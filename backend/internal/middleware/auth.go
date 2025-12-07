@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
@@ -13,26 +12,26 @@ func AuthMiddleware(ctx *gin.Context) {
 	token := ctx.GetHeader("Authorization")
 
 	if token == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("unauthorized")})
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
 	authDetails, err := utils.VerifyToken(token)
 
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("unauthorized")})
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
 	auth, err := models.FetchAuth(authDetails)
 
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("unauthorized")})
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
 	if auth == nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": errors.New("unauthorized")})
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 

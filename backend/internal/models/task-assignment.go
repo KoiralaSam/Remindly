@@ -94,3 +94,33 @@ func (ta *TaskAssignment) Delete(ctx context.Context) error {
 
 	return nil
 }
+
+func GetTaskAssignments(ctx context.Context, taskID string) ([]TaskAssignment, error) {
+	query := `SELECT id, task_id, user_id, assigned_by, assigned_at 
+	          FROM task_assignments 
+	          WHERE task_id = $1`
+
+	rows, err := db.GetDB().Query(ctx, query, taskID)
+	if err != nil {
+		return nil, errors.New("failed to get task assignments: " + err.Error())
+	}
+	defer rows.Close()
+
+	var assignments []TaskAssignment
+	for rows.Next() {
+		var assignment TaskAssignment
+		err := rows.Scan(
+			&assignment.ID,
+			&assignment.TaskID,
+			&assignment.UserID,
+			&assignment.AssignedBy,
+			&assignment.AssignedAt,
+		)
+		if err != nil {
+			return nil, errors.New("failed to scan task assignment: " + err.Error())
+		}
+		assignments = append(assignments, assignment)
+	}
+
+	return assignments, nil
+}

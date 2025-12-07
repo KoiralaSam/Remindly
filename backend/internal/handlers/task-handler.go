@@ -56,6 +56,22 @@ func CreateTask(ctx *gin.Context) {
 	}
 
 	for _, assignee := range requestBody.Assignees {
+		// Check if assignee is a member of the group before assigning
+		groupMember := &models.GroupMember{
+			GroupID: groupID,
+			UserID:  assignee,
+		}
+		isMember, err := groupMember.IsMember(ctx.Request.Context())
+		if err != nil {
+			// Skip this assignee if there's an error checking membership
+			continue
+		}
+		if !isMember {
+			// Skip non-members - do not assign to users who are not group members
+			continue
+		}
+
+		// Assign only if the user is a member
 		assignment := models.TaskAssignment{
 			TaskID:     task.ID,
 			UserID:     assignee,
@@ -63,10 +79,9 @@ func CreateTask(ctx *gin.Context) {
 		}
 		err = assignment.Save(ctx.Request.Context())
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			// Skip this assignee if assignment fails (e.g., duplicate assignment)
+			continue
 		}
-
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{"task": task})
@@ -161,6 +176,37 @@ func GetUserTasks(ctx *gin.Context) {
 
 func GetTaskByIDWithAssignees(ctx *gin.Context) {
 	taskID := ctx.Param("taskId")
+	groupID := ctx.Param("groupID")
+
+	// First, verify that the task belongs to the group
+	taskCheck, err := models.GetTaskByID(ctx.Request.Context(), taskID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+		return
+	}
+
+	// Verify the task belongs to the group from the URL
+	if taskCheck.GroupID != groupID {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "task does not belong to this group"})
+		return
+	}
+
+	role := ctx.GetString("role")
+	// Allow access if user is owner or admin
+	if role != "owner" && role != "admin" {
+		// If not owner/admin, check if user is assigned to the task
+		taskAssignment := models.TaskAssignment{
+			TaskID: taskID,
+			UserID: ctx.GetString("userID"),
+		}
+		err := taskAssignment.Get(ctx.Request.Context())
+		if err != nil {
+			// User is not assigned to the task, deny access
+			ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to access this task"})
+			return
+		}
+		// User is assigned, allow access (continue)
+	}
 
 	task, err := models.GetTaskByIDWithAssignees(ctx.Request.Context(), taskID)
 	if err != nil {
@@ -169,4 +215,124 @@ func GetTaskByIDWithAssignees(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"task": task})
+}
+
+func UpdateTask(ctx *gin.Context) {
+	taskID := ctx.Param("taskId")
+	groupID := ctx.Param("groupID")
+
+	// First, verify that the task belongs to the group
+	taskCheck, err := models.GetTaskByID(ctx.Request.Context(), taskID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+		return
+	}
+
+	// Verify the task belongs to the group from the URL
+	if taskCheck.GroupID != groupID {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "task does not belong to this group"})
+		return
+	}
+
+	role := ctx.GetString("role")
+	// Allow access if user is owner or admin
+	if role != "owner" && role != "admin" {
+		// If not owner/admin, check if user is assigned to the task
+		taskAssignment := models.TaskAssignment{
+			TaskID: taskID,
+			UserID: ctx.GetString("userID"),
+		}
+		err := taskAssignment.Get(ctx.Request.Context())
+		if err != nil {
+			// User is not assigned to the task, deny access
+			ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to update this task"})
+			return
+		}
+		// User is assigned, allow access (continue)
+	}
+
+	var requestBody struct {
+		Title       string `json:"title" binding:"required"`
+		Description string `json:"description" binding:"required"`
+		DueDate     string `json:"due_date" binding:"required"`
+		Status      string `json:"status" binding:"required"`
+	}
+
+	err = ctx.ShouldBindJSON(&requestBody)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// If user is not owner or admin, set status to pending (requires approval)
+	status := requestBody.Status
+	if role != "owner" && role != "admin" {
+		status = "pending"
+	}
+
+	err = models.UpdateTask(ctx.Request.Context(), taskID, requestBody.Title, requestBody.Description, requestBody.DueDate, status)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Task updated successfully"})
+}
+
+func DeleteTask(ctx *gin.Context) {
+	taskID := ctx.Param("taskId")
+	groupID := ctx.Param("groupID")
+
+	// First, verify that the task belongs to the group
+	taskCheck, err := models.GetTaskByID(ctx.Request.Context(), taskID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+		return
+	}
+
+	// Verify the task belongs to the group from the URL
+	if taskCheck.GroupID != groupID {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "task does not belong to this group"})
+		return
+	}
+
+	role := ctx.GetString("role")
+	// If user is not owner or admin, set status to cancelled instead of deleting
+	if role != "owner" && role != "admin" {
+		// Check if user is assigned to the task
+		taskAssignment := models.TaskAssignment{
+			TaskID: taskID,
+			UserID: ctx.GetString("userID"),
+		}
+		err := taskAssignment.Get(ctx.Request.Context())
+		if err != nil {
+			// User is not assigned to the task, deny access
+			ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to delete this task"})
+			return
+		}
+		// User is assigned, cancel the task instead of deleting
+		// Get the task to preserve existing values
+		task, err := models.GetTaskByID(ctx.Request.Context(), taskID)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		// Update task status to cancelled
+		err = models.UpdateTask(ctx.Request.Context(), taskID, task.Title, task.Description, task.DueDate.Format(time.RFC3339), "cancelled")
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"message": "Task cancelled successfully"})
+		return
+	}
+
+	// Owner or admin can actually delete the task
+	err = models.DeleteTask(ctx.Request.Context(), taskID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 }

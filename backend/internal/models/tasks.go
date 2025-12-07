@@ -147,6 +147,15 @@ func GetTasksByUserID(ctx context.Context, userID string, status string, assigne
 	return tasks, total, nil
 }
 
+func GetTaskByID(ctx context.Context, taskID string) (*Task, error) {
+	query := `SELECT id, group_id, title, description, due_date, status, created_by, created_at, updated_at FROM tasks WHERE id = $1`
+	var task Task
+	err := db.GetDB().QueryRow(ctx, query, taskID).Scan(&task.ID, &task.GroupID, &task.Title, &task.Description, &task.DueDate, &task.Status, &task.CreatedBy, &task.CreatedAt, &task.UpdatedAt)
+	if err != nil {
+		return nil, errors.New("failed to get task: " + err.Error())
+	}
+	return &task, nil
+}
 func GetTaskByIDWithAssignees(ctx context.Context, taskID string) (*TaskWithAssignees, error) {
 	// Get the task with all assignees using ARRAY_AGG
 	query := `SELECT tasks.id, tasks.group_id, tasks.title, tasks.description, tasks.due_date, tasks.status, tasks.created_by, tasks.created_at, tasks.updated_at, 
@@ -181,4 +190,22 @@ func GetTaskByIDWithAssignees(ctx context.Context, taskID string) (*TaskWithAssi
 	}
 
 	return taskWithAssignees, nil
+}
+
+func UpdateTask(ctx context.Context, taskID string, title string, description string, dueDate string, status string) error {
+	query := `UPDATE tasks SET title = $1, description = $2, due_date = $3, status = $4 WHERE id = $5`
+	_, err := db.GetDB().Exec(ctx, query, title, description, dueDate, status, taskID)
+	if err != nil {
+		return errors.New("failed to update task: " + err.Error())
+	}
+	return nil
+}
+
+func DeleteTask(ctx context.Context, taskID string) error {
+	query := `DELETE FROM tasks WHERE id = $1`
+	_, err := db.GetDB().Exec(ctx, query, taskID)
+	if err != nil {
+		return errors.New("failed to delete task: " + err.Error())
+	}
+	return nil
 }

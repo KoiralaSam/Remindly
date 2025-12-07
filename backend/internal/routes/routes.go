@@ -41,12 +41,14 @@ func SetupRoutes(server *gin.Engine) {
 	authenticatedGroupMember.POST("/tasks", handlers.CreateTask)
 	authenticatedGroupMember.GET("/tasks", handlers.GetGroupTasks)
 	authenticated.GET("/tasks/user", handlers.GetUserTasks)
-	authenticated.GET("/tasks/:taskId", handlers.GetTaskByIDWithAssignees)
-	// authenticatedGroupMember.PATCH("/tasks/:taskId", handlers.UpdateTask)
-	// authenticatedGroupMember.DELETE("/tasks/:taskId", handlers.DeleteTask)
+	authenticatedGroupMember.GET("/tasks/:taskId", handlers.GetTaskByIDWithAssignees)
+	authenticatedGroupMember.PATCH("/tasks/:taskId", handlers.UpdateTask)
+	authenticatedGroupMember.DELETE("/tasks/:taskId", handlers.DeleteTask)
 
 	// Task Assignment Routes
 	authenticatedGroupMember.POST("/tasks/:taskId/assign", handlers.AssignTask)
-	// authenticatedGroupMember.GET("/tasks/:taskId/assignments", handlers.GetTaskAssignments)
-	// authenticatedGroupMember.DELETE("/tasks/:taskId/assignments/:userId", handlers.DeleteTaskAssignment)
+	authenticatedGroupMember.GET("/tasks/:taskId/assignments", handlers.GetTaskAssignments)
+	authenticatedGroupMember.DELETE("/tasks/:taskId/assignments", handlers.UnassignTask)
+
+	//Task Notification Routes
 }

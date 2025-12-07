@@ -90,15 +90,16 @@ func (gm *GroupMember) Delete() error {
 	return nil
 }
 
-func (gm *GroupMember) IsMember() (bool, error) {
+func (gm *GroupMember) IsMember(ctx context.Context) (bool, error) {
 	query := `SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2`
-	rows, err := db.GetDB().Query(context.Background(), query, gm.GroupID, gm.UserID)
+	var id string
+	err := db.GetDB().QueryRow(ctx, query, gm.GroupID, gm.UserID).Scan(&id)
 	if err != nil {
+		// If no rows found, user is not a member
+		if err.Error() == "no rows in result set" || err.Error() == "sql: no rows in result set" {
+			return false, nil
+		}
 		return false, errors.New("failed to check if group member is a member: " + err.Error())
 	}
-	defer rows.Close()
-	for rows.Next() {
-		return true, nil
-	}
-	return false, nil
+	return true, nil
 }
