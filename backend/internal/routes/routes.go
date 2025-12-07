@@ -40,6 +40,7 @@ func SetupRoutes(server *gin.Engine) {
 	// Task Routes
 	authenticatedGroupMember.POST("/tasks", handlers.CreateTask)
 	authenticatedGroupMember.GET("/tasks", handlers.GetGroupTasks)
+	authenticated.GET("/tasks/user", handlers.GetUserTasks)
 	// authenticatedGroupMember.PATCH("/tasks/:taskId", handlers.UpdateTask)
 	// authenticatedGroupMember.DELETE("/tasks/:taskId", handlers.DeleteTask)
 
