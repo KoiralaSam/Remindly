@@ -100,7 +100,7 @@ func UpdateGroupMemberRole(ctx *gin.Context) {
 		UserID:  userID,
 	}
 	// Check if the updater is a member of the group
-	isMember, err := groupMember.IsMember()
+	isMember, err := groupMember.IsMember(ctx.Request.Context())
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -112,16 +112,7 @@ func UpdateGroupMemberRole(ctx *gin.Context) {
 	}
 
 	// Check if the requester's role has permission to update the target role
-	requesterMember := &models.GroupMember{
-		GroupID: groupID,
-		UserID:  ctx.GetString("userID"),
-	}
-	err = requesterMember.Get()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	requesterRole := requesterMember.Role
+	requesterRole := ctx.GetString("role")
 	canUpdate := models.CanModifyRole(requesterRole, requestBody.Role)
 	if !canUpdate {
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "you do not have permission to update this role"})
@@ -141,24 +132,15 @@ func DeleteGroupMember(ctx *gin.Context) {
 	groupID := ctx.Param("groupID")
 	userID := ctx.Param("userId")
 
-	// Get the requester's role to check permissions
-	requesterMember := &models.GroupMember{
-		GroupID: groupID,
-		UserID:  ctx.GetString("userID"),
-	}
-	err := requesterMember.Get()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	requesterRole := requesterMember.Role
+	// Get the requester's role from context (set by middleware)
+	requesterRole := ctx.GetString("role")
 
 	// Get the target member to check their role and verify they exist
 	targetMember := &models.GroupMember{
 		GroupID: groupID,
 		UserID:  userID,
 	}
-	err = targetMember.Get()
+	err := targetMember.Get()
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "group member not found"})
 		return

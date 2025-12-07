@@ -29,10 +29,14 @@ func main() {
 		log.Fatalf("Error initializing database: %v", err)
 	}
 
-	//get the pool from db.go and call adapter and pass it go migrations.go
-	pool := db.GetDB()
-	dbAdapter := db.SqlDB(pool)
-	err = db.RunMigrations(dbAdapter, "../../migrations")
+	// Create a separate direct connection for migrations to avoid prepared statement conflicts
+	migrationDB, err := db.NewMigrationConnection(DB_URL)
+	if err != nil {
+		log.Fatalf("Error creating migration connection: %v", err)
+	}
+	defer migrationDB.Close()
+
+	err = db.RunMigrations(migrationDB, "../../migrations")
 	if err != nil {
 		log.Fatalf("Error running migrations: %v", err)
 	}

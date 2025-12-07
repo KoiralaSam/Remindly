@@ -36,10 +36,10 @@ func (mr *Role) GetAllRoles() ([]Role, error) {
 func CanModifyRole(adderRole, targetRole string) bool {
 	// Define role hierarchy and permissions
 	permissions := map[string][]string{
-		"owner":  {"owner", "admin", "member"}, // Owner can add anyone
-		"admin":  {"member", "viewer"},         // Admin can add members and admins
-		"member": {"member"},                   // Members can add members
-		"viewer": {},                           // Viewers cannot add anyone
+		"owner":  {"owner", "admin", "member", "viewer"}, // Owner can add anyone
+		"admin":  {"member", "viewer"},                   // Admin can add members and viewers
+		"member": {},                                     // Members cannot add anyone
+		"viewer": {},                                     // Viewers cannot add anyone
 	}
 
 	allowedRoles, exists := permissions[adderRole]
@@ -56,7 +56,7 @@ func GetAddableRoles(adderRole string) []string {
 	permissions := map[string][]string{
 		"owner":  {"owner", "admin", "member", "viewer"},
 		"admin":  {"member", "viewer"},
-		"member": {},
+		"member": {}, // Members cannot add anyone (consistent with CanModifyRole)
 		"viewer": {},
 	}
 
