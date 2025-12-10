@@ -71,3 +71,57 @@ func GetGroupByID(groupID string) (*GroupDetail, error) {
 
 	return &groupDetail, nil
 }
+
+func (group *Group) Update() error {
+	query := `UPDATE groups SET name = $1, description = $2, updated_at = NOW() WHERE id = $3 RETURNING updated_at`
+
+	err := db.GetDB().QueryRow(context.Background(), query, group.Name, group.Description, group.ID).Scan(&group.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetAllGroups(userID string) ([]Group, error) {
+	query := `
+		SELECT DISTINCT g.id, g.name, g.description, g.created_by, g.created_at, g.updated_at
+		FROM groups g
+		INNER JOIN group_members gm ON g.id = gm.group_id
+		WHERE gm.user_id = $1
+		ORDER BY g.created_at DESC
+	`
+
+	rows, err := db.GetDB().Query(context.Background(), query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []Group
+	for rows.Next() {
+		var group Group
+		err := rows.Scan(&group.ID, &group.Name, &group.Description, &group.CreatedBy, &group.CreatedAt, &group.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		groups = append(groups, group)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}
+
+func DeleteGroup(groupID string) error {
+	query := `DELETE FROM groups WHERE id = $1`
+
+	_, err := db.GetDB().Exec(context.Background(), query, groupID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

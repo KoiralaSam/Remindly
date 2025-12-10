@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -65,19 +66,26 @@ func GetTasksByGroupID(ctx context.Context, groupID string, status string, assig
 		paramNum++
 	}
 
+	// Acquire a connection from the pool to avoid prepared statement conflicts with dynamic queries
+	conn, err := db.GetDB().Acquire(ctx)
+	if err != nil {
+		return nil, 0, errors.New("failed to acquire database connection: " + err.Error())
+	}
+	defer conn.Release()
+
 	// Get total count
-	countQuery := `SELECT COUNT(*) FROM tasks ` + whereClause
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM tasks %s`, whereClause)
 	var total int64
-	err := db.GetDB().QueryRow(ctx, countQuery, args...).Scan(&total)
+	err = conn.QueryRow(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, errors.New("failed to get task count: " + err.Error())
 	}
 
 	// Get tasks with pagination
-	query := `SELECT id, group_id, title, description, due_date, status, created_by, created_at, updated_at FROM tasks` + whereClause + ` ORDER BY created_at DESC LIMIT $` + strconv.Itoa(paramNum) + ` OFFSET $` + strconv.Itoa(paramNum+1)
+	query := fmt.Sprintf(`SELECT id, group_id, title, description, due_date, status, created_by, created_at, updated_at FROM tasks %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, whereClause, paramNum, paramNum+1)
 	queryArgs := append(args, limit, offset)
 
-	rows, err := db.GetDB().Query(ctx, query, queryArgs...)
+	rows, err := conn.Query(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, 0, errors.New("failed to get tasks: " + err.Error())
 	}
@@ -115,19 +123,26 @@ func GetTasksByUserID(ctx context.Context, userID string, status string, assigne
 		paramNum++
 	}
 
+	// Acquire a connection from the pool to avoid prepared statement conflicts with dynamic queries
+	conn, err := db.GetDB().Acquire(ctx)
+	if err != nil {
+		return nil, 0, errors.New("failed to acquire database connection: " + err.Error())
+	}
+	defer conn.Release()
+
 	// Get total count - need JOIN for task_assignments
-	countQuery := `SELECT COUNT(*) FROM tasks JOIN task_assignments ON tasks.id = task_assignments.task_id ` + whereClause
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM tasks JOIN task_assignments ON tasks.id = task_assignments.task_id %s`, whereClause)
 	var total int64
-	err := db.GetDB().QueryRow(ctx, countQuery, args...).Scan(&total)
+	err = conn.QueryRow(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, errors.New("failed to get task count: " + err.Error())
 	}
 
 	// Get tasks with pagination
-	query := `SELECT tasks.id, tasks.group_id, tasks.title, tasks.description, tasks.due_date, tasks.status, tasks.created_by, tasks.created_at, tasks.updated_at FROM tasks JOIN task_assignments ON tasks.id = task_assignments.task_id ` + whereClause + ` ORDER BY tasks.created_at DESC LIMIT $` + strconv.Itoa(paramNum) + ` OFFSET $` + strconv.Itoa(paramNum+1)
+	query := fmt.Sprintf(`SELECT tasks.id, tasks.group_id, tasks.title, tasks.description, tasks.due_date, tasks.status, tasks.created_by, tasks.created_at, tasks.updated_at FROM tasks JOIN task_assignments ON tasks.id = task_assignments.task_id %s ORDER BY tasks.created_at DESC LIMIT $%d OFFSET $%d`, whereClause, paramNum, paramNum+1)
 	queryArgs := append(args, limit, offset)
 
-	rows, err := db.GetDB().Query(ctx, query, queryArgs...)
+	rows, err := conn.Query(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, 0, errors.New("failed to get tasks: " + err.Error())
 	}
