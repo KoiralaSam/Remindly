@@ -7,14 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CreateGroup(ctx *gin.Context){
+func CreateGroup(ctx *gin.Context) {
 	var group models.Group
 	createdByUserId := ctx.GetString("userID")
 
 	err := ctx.ShouldBindJSON(&group)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "Couldnot parse request data!", 
+			"error": "Couldnot parse request data!",
 		})
 		return
 	}
@@ -23,7 +23,7 @@ func CreateGroup(ctx *gin.Context){
 	err = group.Create()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Couldnot create group!", 
+			"error": "Couldnot create group!",
 		})
 		return
 	}
@@ -37,14 +37,14 @@ func CreateGroup(ctx *gin.Context){
 	err = groupMember.Save()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Group created but failed to add creator as member!", 
+			"error": "Group created but failed to add creator as member!",
 		})
 		return
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"message": "Group created successfully!",
-		"group": group,
+		"group":   group,
 	})
 }
 
@@ -59,26 +59,122 @@ func GetGroupByID(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, groupDetail)
+	ctx.JSON(http.StatusOK, gin.H{
+		"group": groupDetail,
+	})
 }
 
 func GetGroups(ctx *gin.Context) {
-	// TODO: Implement GetGroups
-	ctx.JSON(http.StatusNotImplemented, gin.H{
-		"error": "Not implemented yet",
+	userID := ctx.GetString("userID")
+
+	groups, err := models.GetAllGroups(userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch groups",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"groups": groups,
 	})
 }
 
 func UpdateGroup(ctx *gin.Context) {
-	// TODO: Implement UpdateGroup
-	ctx.JSON(http.StatusNotImplemented, gin.H{
-		"error": "Not implemented yet",
+	groupID := ctx.Param("groupID")
+
+	var requestBody struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+
+	err := ctx.ShouldBindJSON(&requestBody)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "Could not parse request data!",
+		})
+		return
+	}
+
+	// Get the existing group to preserve fields not being updated
+	groupDetail, err := models.GetGroupByID(groupID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"error": "Group not found!",
+		})
+		return
+	}
+
+	// Check if user has permission to update (owner or admin)
+	role := ctx.GetString("role")
+	if role != "owner" && role != "admin" {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"error": "You do not have permission to update this group!",
+		})
+		return
+	}
+
+	// Update only provided fields
+	group := models.Group{
+		ID:          groupID,
+		Name:        requestBody.Name,
+		Description: requestBody.Description,
+	}
+
+	// If name is not provided, keep the existing name
+	if group.Name == "" {
+		group.Name = groupDetail.Name
+	}
+
+	// If description is not provided, keep the existing description
+	if group.Description == "" {
+		group.Description = groupDetail.Description
+	}
+
+	err = group.Update()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Could not update group!",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Group updated successfully!",
+		"group":   group,
 	})
 }
 
 func DeleteGroup(ctx *gin.Context) {
-	// TODO: Implement DeleteGroup
-	ctx.JSON(http.StatusNotImplemented, gin.H{
-		"error": "Not implemented yet",
+	groupID := ctx.Param("groupID")
+
+	// Get the existing group to verify it exists
+	_, err := models.GetGroupByID(groupID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"error": "Group not found!",
+		})
+		return
+	}
+
+	// Check if user has permission to delete (only owner)
+	role := ctx.GetString("role")
+	if role != "owner" {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"error": "Only group owners can delete groups!",
+		})
+		return
+	}
+
+	err = models.DeleteGroup(groupID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Could not delete group!",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Group deleted successfully!",
 	})
 }

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
 	"github.com/KoiralaSam/Remindly/backend/internal/utils"
@@ -10,6 +11,15 @@ import (
 
 func AuthMiddleware(ctx *gin.Context) {
 	token := ctx.GetHeader("Authorization")
+
+	if token == "" {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Remove "Bearer " prefix if present
+	token = strings.TrimPrefix(token, "Bearer ")
+	token = strings.TrimSpace(token)
 
 	if token == "" {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})

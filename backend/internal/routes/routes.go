@@ -51,4 +51,10 @@ func SetupRoutes(server *gin.Engine) {
 	authenticatedGroupMember.DELETE("/tasks/:taskId/assignments", handlers.UnassignTask)
 
 	//Task Notification Routes
+	authenticatedGroupMember.POST("/tasks/:taskId/notifications", handlers.CreateTaskNotification)
+	authenticatedGroupMember.GET("/tasks/:taskId/notifications", handlers.GetTaskNotifications)
+
+	// Notification Routes (direct access by ID)
+	authenticated.PATCH("/notifications/:id", handlers.UpdateNotification)
+	authenticated.DELETE("/notifications/:id", handlers.DeleteNotification)
 }
