@@ -1,6 +1,6 @@
-import { useState, FormEvent } from 'react';
-import { useUser } from '../context/UserContext';
-import { apiConfig } from '../config/api';
+import { useState, FormEvent } from "react";
+import { useUser } from "../../context/UserContext";
+import { apiConfig } from "../../config/api";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -19,22 +19,25 @@ interface LoginResponse {
   email: string;
 }
 
-export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProps) {
+export default function LoginForm({
+  onSuccess,
+  onSwitchToSignup,
+}: LoginFormProps) {
   const { setUser } = useUser();
   const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     // Basic validation
     if (!formData.email || !formData.password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
@@ -42,9 +45,9 @@ export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProp
 
     try {
       const response = await fetch(apiConfig.auth.login, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: formData.email,
@@ -55,7 +58,7 @@ export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProp
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Login failed. Please check your credentials.');
+        setError(data.error || "Login failed. Please check your credentials.");
         setLoading(false);
         return;
       }
@@ -72,7 +75,7 @@ export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProp
       setLoading(false);
       onSuccess?.();
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError("Network error. Please try again.");
       setLoading(false);
     }
   };
@@ -90,7 +93,9 @@ export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProp
             id="login-email"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
             required
             placeholder="Email"
             disabled={loading}
@@ -103,7 +108,9 @@ export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProp
             id="login-password"
             type="password"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
             required
             placeholder="Password"
             disabled={loading}
@@ -122,12 +129,12 @@ export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProp
           disabled={loading}
           className="w-full py-3.5 px-6 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white hover:from-purple-700 hover:via-indigo-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loading ? "Signing in..." : "Sign In"}
         </button>
       </form>
 
       <p className="text-center mt-5 text-xs text-slate-600">
-        Don't have an account?{' '}
+        Don't have an account?{" "}
         <button
           type="button"
           onClick={onSwitchToSignup}
@@ -139,4 +146,3 @@ export default function LoginForm({ onSuccess, onSwitchToSignup }: LoginFormProp
     </div>
   );
 }
-

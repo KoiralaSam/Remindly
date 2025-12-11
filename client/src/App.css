@@ -5,10 +5,108 @@
   --color-primary-hover: #7c3aed;
 }
 
+:root {
+  /* shadcn/ui Light Mode CSS Variables */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 262 83% 58%; /* Purple to match your brand */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 262 83% 58%; /* Purple ring to match primary */
+  --radius: 0.5rem;
+  
+  /* Sidebar variables */
+  --sidebar-background: 0 0% 98%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 240 5.9% 10%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 240 4.8% 95.9%;
+  --sidebar-accent-foreground: 240 5.9% 10%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+.dark {
+  /* shadcn/ui Dark Mode CSS Variables - Custom dark purple theme */
+  --background: 280 20% 8%; /* Dark purple background */
+  --foreground: 0 0% 100%;
+  --card: 280 20% 10%;
+  --card-foreground: 0 0% 100%;
+  --popover: 280 20% 10%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 262 83% 58%; /* Purple */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 280 15% 15%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 280 15% 15%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 280 15% 15%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 280 15% 20%;
+  --input: 280 15% 20%;
+  --ring: 262 83% 58%;
+  
+  /* Sidebar dark mode */
+  --sidebar-background: 280 20% 10%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-primary: 262 83% 58%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 280 15% 15%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-border: 280 15% 20%;
+  --sidebar-ring: 262 83% 58%;
+}
+
 body {
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: rgb(15 23 42);
-  background-color: rgb(248 250 252);
+}
+
+@theme inline {
+  /* Map shadcn/ui variables to Tailwind colors */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  /* Sidebar colors */
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
 }
