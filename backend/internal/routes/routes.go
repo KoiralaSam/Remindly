@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(server *gin.Engine) {
+func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler) {
 	// Authentication Routes
 	server.POST("/api/auth/register", handlers.RegisterUser)
 	server.POST("/api/auth/login", handlers.Login)
@@ -26,6 +26,15 @@ func SetupRoutes(server *gin.Engine) {
 
 	authenticatedGroupMember := authenticated.Group("/groups/:groupID")
 	authenticatedGroupMember.Use(middleware.AuthGroupMemberMiddleware)
+
+	//websocket routes
+	authenticatedGroupMember.POST("/ws/createRoom", wsHandler.CreateRoom)
+	authenticatedGroupMember.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)
+	authenticatedGroupMember.GET("/ws/rooms", wsHandler.GetRooms)
+	authenticatedGroupMember.GET("/ws/rooms/clients", wsHandler.GetClients)
+	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages", handlers.GetRoomMessages)
+	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages/:userId", handlers.GetUserRoomMessages)
+	authenticatedGroupMember.DELETE("/ws/messages/:messageId", handlers.DeleteMessage)
 
 	authenticatedGroupMember.GET("", handlers.GetGroupByID)
 	authenticatedGroupMember.PATCH("", handlers.UpdateGroup)
