@@ -1,8 +1,7 @@
-import React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import LoginForm from "../components/LoginForm";
-import SignupForm from "../components/SignupForm";
+import LoginForm from "../components/auth/LoginForm";
+import SignupForm from "@/components/auth/SignupForm";
 
 export default function Homepage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -63,4 +62,3 @@ export default function Homepage() {
     </div>
   );
 }
-
