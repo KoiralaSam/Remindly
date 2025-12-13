@@ -1,4 +1,3 @@
-import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,6 +6,7 @@ import {
 } from "react-router-dom";
 import { UserProvider } from "./context/UserContext";
 import { GroupProvider } from "./context/GroupContext";
+import { MessageProvider } from "./context/MessageContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import Homepage from "./routes/Homepage";
@@ -18,15 +18,17 @@ function App() {
     <ThemeProvider>
       <UserProvider>
         <GroupProvider>
-          <SidebarProvider>
-            <Router>
-              <Routes>
-                <Route path="/" element={<Homepage />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Router>
-          </SidebarProvider>
+          <MessageProvider>
+            <SidebarProvider>
+              <Router>
+                <Routes>
+                  <Route path="/" element={<Homepage />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Router>
+            </SidebarProvider>
+          </MessageProvider>
         </GroupProvider>
       </UserProvider>
     </ThemeProvider>

@@ -3,7 +3,8 @@ import { useUser } from "@/context/UserContext";
 import { useGroups, Group } from "@/context/GroupContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { apiConfig } from "@/config/api";
-import { SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
+import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { CreateGroupModal } from "./CreateGroupModal";
 import { Hash } from "lucide-react";
 
 interface GroupsResponse {
@@ -16,15 +17,13 @@ export const Groups: FC = () => {
   const { selectedGroupId, setSelectedGroupId, setActiveTab } = useSidebar();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [hasFetched, setHasFetched] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   useEffect(() => {
     const fetchGroups = async () => {
-      // Only fetch if groups are not already in context
-      if (groups.length > 0) {
-        return;
-      }
-
-      if (!user?.token) {
-        setError("Not authenticated");
+      // Only fetch once
+      if (hasFetched || !user?.token) {
         return;
       }
 
@@ -51,16 +50,18 @@ export const Groups: FC = () => {
         const groupsData = data as GroupsResponse;
         setGroups(groupsData.groups || []);
         setError("");
+        setHasFetched(true);
       } catch (err) {
         setError("Network error. Please try again.");
         console.error("Error fetching groups:", err);
+        setHasFetched(true);
       } finally {
         setLoading(false);
       }
     };
 
     fetchGroups();
-  }, [user?.token, setGroups]);
+  }, [hasFetched, user?.token, setGroups]);
 
   if (loading) {
     return (
@@ -79,27 +80,33 @@ export const Groups: FC = () => {
   }
 
   return (
-    <div className="p-1">
-      {groups.length === 0 ? (
-        <p className="text-muted-foreground">No groups found.</p>
-      ) : (
-        <div>
-          {groups.map((group) => (
-            <SidebarMenuItem key={group.id}>
-              <SidebarMenuButton
-                isActive={selectedGroupId === group.id}
-                onClick={() => {
-                  setSelectedGroupId(group.id);
-                  setActiveTab("groups");
-                }}
-              >
-                <Hash className="h-4 w-4" />
-                <span className="text-sm">{group.name.replace("-", " ")}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      <CreateGroupModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <div className="p-1">
+        {groups.length === 0 ? (
+          <div className="p-4 text-center">
+            <p className="text-sm text-muted-foreground mb-3">No groups yet</p>
+            <p className="text-xs text-muted-foreground">Click the + button to create a group</p>
+          </div>
+        ) : (
+          <div>
+            {groups.map((group) => (
+              <SidebarMenuItem key={group.id}>
+                <SidebarMenuButton
+                  isActive={selectedGroupId === group.id}
+                  onClick={() => {
+                    setSelectedGroupId(group.id);
+                    setActiveTab("groups");
+                  }}
+                >
+                  <Hash className="h-4 w-4" />
+                  <span className="text-sm">{group.name.replace("-", " ")}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 };

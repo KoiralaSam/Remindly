@@ -1,5 +1,6 @@
 import { useState } from "react";
-import ThemeToggle from "../components/ThemeToggle";
+import ThemeToggle from "../components/common/ThemeToggle";
+import { CreateGroupModal } from "@/components/groups/CreateGroupModal";
 import {
   Sidebar,
   SidebarContent,
@@ -25,10 +26,11 @@ import {
   MessageCircle,
   UserPlus,
   ChevronDown,
+  Plus,
 } from "lucide-react";
-import { Groups } from "@/components/dashboard/groups";
-import { SearchBar } from "@/components/dashboard/SearchBar";
-import { MainContent } from "@/components/dashboard/MainContent";
+import { Groups } from "@/components/groups/GroupList";
+import { SearchBar } from "@/components/common/SearchBar";
+import { MainContent } from "@/components/layout/MainContent";
 import { useSidebar } from "@/context/SidebarContext";
 import { useUser } from "@/context/UserContext";
 
@@ -40,6 +42,7 @@ export default function Dashboard() {
     directMessages: true,
     apps: true,
   });
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({
@@ -50,6 +53,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen w-full">
+      <CreateGroupModal isOpen={isCreateGroupModalOpen} onClose={() => setIsCreateGroupModalOpen(false)} />
       <div className="relative z-50 w-full">
         <SearchBar />
       </div>
@@ -145,22 +149,31 @@ export default function Dashboard() {
             {/* Groups */}
             <SidebarGroup>
               <SidebarGroupLabel>
-                <button
-                  onClick={() => {
-                    toggleSection("groups");
-                    setActiveTab("groups");
-                  }}
-                  className="flex items-center gap-1.5 w-full px-2 py-1.5 hover:bg-sidebar-accent rounded-md transition-colors group"
-                >
-                  <ChevronRight
-                    className={`h-3.5 w-3.5 transition-transform text-sidebar-foreground/60 group-hover:text-sidebar-foreground ${
-                      expandedSections.groups ? "rotate-90" : ""
-                    }`}
-                  />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60 group-hover:text-sidebar-foreground">
-                    GROUPS
-                  </span>
-                </button>
+                <div className="flex items-center justify-between w-full">
+                  <button
+                    onClick={() => {
+                      toggleSection("groups");
+                      setActiveTab("groups");
+                    }}
+                    className="flex items-center gap-1.5 flex-1 px-2 py-1.5 hover:bg-sidebar-accent rounded-md transition-colors group"
+                  >
+                    <ChevronRight
+                      className={`h-3.5 w-3.5 transition-transform text-sidebar-foreground/60 group-hover:text-sidebar-foreground ${
+                        expandedSections.groups ? "rotate-90" : ""
+                      }`}
+                    />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60 group-hover:text-sidebar-foreground">
+                      GROUPS
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setIsCreateGroupModalOpen(true)}
+                    className="p-1 hover:bg-sidebar-accent rounded text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+                    aria-label="Create group"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </SidebarGroupLabel>
               {expandedSections.groups && (
                 <SidebarGroupContent>
