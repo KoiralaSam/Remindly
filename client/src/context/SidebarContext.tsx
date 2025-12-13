@@ -34,7 +34,7 @@ interface SidebarProviderProps {
 export const SidebarProvider: React.FC<SidebarProviderProps> = ({
   children,
 }) => {
-  const [activeTab, setActiveTab] = useState<SidebarTab>(null);
+  const [activeTab, setActiveTab] = useState<SidebarTab>("groups");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
 

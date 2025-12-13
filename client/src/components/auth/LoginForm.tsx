@@ -23,7 +23,7 @@ export default function LoginForm({
   onSuccess,
   onSwitchToSignup,
 }: LoginFormProps) {
-  const { setUser } = useUser();
+  const { setUser, fetchUserData } = useUser();
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -71,6 +71,9 @@ export default function LoginForm({
         email: userData.email,
         token: userData.token,
       });
+
+      // Fetch user data including role permissions
+      await fetchUserData();
 
       setLoading(false);
       onSuccess?.();

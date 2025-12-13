@@ -25,4 +25,13 @@ export const apiConfig = {
   tasks: {
     user: `${API_BASE_URL}/api/tasks/user`,
   },
+  websocket: {
+    createRoom: (groupId: string) => `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/createRoom`,
+    joinRoom: (groupId: string, roomId: string) => `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/joinRoom/${roomId}`,
+    getRooms: (groupId: string) => `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/rooms`,
+    getClients: (groupId: string) => `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/rooms/clients`,
+    roomMessages: (groupId: string) => `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/rooms/${groupId}/messages`,
+    userRoomMessages: (groupId: string, userId: string) => `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/rooms/${groupId}/messages/${userId}`,
+    deleteMessage: (groupId: string, messageId: string) => `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/messages/${messageId}`,
+  },
 };
