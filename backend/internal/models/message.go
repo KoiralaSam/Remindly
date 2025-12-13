@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/db"
-	"github.com/google/uuid"
 )
 
 type Message struct {
 	ID        string    `json:"id"`
 	RoomID    string    `json:"room_id"`
 	UserID    string    `json:"user_id"`
+	Username  string    `json:"username"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -20,21 +20,16 @@ type Message struct {
 
 // Save persists a message to the database
 func (m *Message) Save(ctx context.Context) error {
-	if m.ID == "" {
-		m.ID = uuid.New().String()
-	}
 
-	query := `INSERT INTO messages (id, room_id, user_id, content, created_at, updated_at) 
-	          VALUES ($1, $2, $3, $4, $5, $6) 
+	query := `INSERT INTO messages (room_id, user_id, username, content) 
+	          VALUES ($1, $2, $3, $4) 
 	          RETURNING id, created_at, updated_at`
 
 	err := db.GetDB().QueryRow(ctx, query,
-		m.ID,
 		m.RoomID,
 		m.UserID,
+		m.Username,
 		m.Content,
-		time.Now(),
-		time.Now(),
 	).Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
 
 	if err != nil {
@@ -46,7 +41,7 @@ func (m *Message) Save(ctx context.Context) error {
 
 // GetByID retrieves a message by its ID
 func (m *Message) GetByID(ctx context.Context) error {
-	query := `SELECT id, room_id, user_id, content, created_at, updated_at 
+	query := `SELECT id, room_id, user_id, username, content, created_at, updated_at 
 	          FROM messages 
 	          WHERE id = $1`
 
@@ -54,6 +49,7 @@ func (m *Message) GetByID(ctx context.Context) error {
 		&m.ID,
 		&m.RoomID,
 		&m.UserID,
+		&m.Username,
 		&m.Content,
 		&m.CreatedAt,
 		&m.UpdatedAt,
@@ -68,7 +64,7 @@ func (m *Message) GetByID(ctx context.Context) error {
 
 // GetRoomMessages retrieves all messages for a room with pagination
 func GetRoomMessages(ctx context.Context, roomID string, limit int, offset int) ([]Message, error) {
-	query := `SELECT id, room_id, user_id, content, created_at, updated_at 
+	query := `SELECT id, room_id, user_id, username, content, created_at, updated_at 
 	          FROM messages 
 	          WHERE room_id = $1 
 	          ORDER BY created_at DESC 
@@ -83,7 +79,7 @@ func GetRoomMessages(ctx context.Context, roomID string, limit int, offset int) 
 	var messages []Message
 	for rows.Next() {
 		var msg Message
-		if err := rows.Scan(&msg.ID, &msg.RoomID, &msg.UserID, &msg.Content, &msg.CreatedAt, &msg.UpdatedAt); err != nil {
+		if err := rows.Scan(&msg.ID, &msg.RoomID, &msg.UserID, &msg.Username, &msg.Content, &msg.CreatedAt, &msg.UpdatedAt); err != nil {
 			return nil, errors.New("failed to scan message: " + err.Error())
 		}
 		messages = append(messages, msg)
@@ -99,7 +95,7 @@ func GetRoomMessages(ctx context.Context, roomID string, limit int, offset int) 
 
 // GetUserRoomMessages retrieves messages for a specific user in a room
 func GetUserRoomMessages(ctx context.Context, roomID string, userID string, limit int, offset int) ([]Message, error) {
-	query := `SELECT id, room_id, user_id, content, created_at, updated_at 
+	query := `SELECT id, room_id, user_id, username, content, created_at, updated_at 
 	          FROM messages 
 	          WHERE room_id = $1 AND user_id = $2 
 	          ORDER BY created_at DESC 
@@ -114,7 +110,7 @@ func GetUserRoomMessages(ctx context.Context, roomID string, userID string, limi
 	var messages []Message
 	for rows.Next() {
 		var msg Message
-		if err := rows.Scan(&msg.ID, &msg.RoomID, &msg.UserID, &msg.Content, &msg.CreatedAt, &msg.UpdatedAt); err != nil {
+		if err := rows.Scan(&msg.ID, &msg.RoomID, &msg.UserID, &msg.Username, &msg.Content, &msg.CreatedAt, &msg.UpdatedAt); err != nil {
 			return nil, errors.New("failed to scan message: " + err.Error())
 		}
 		messages = append(messages, msg)

@@ -21,7 +21,7 @@ func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler) {
 	authenticated.PATCH("/users/me", handlers.UpdateUser)
 
 	// Group Routes
-	authenticated.POST("/groups", handlers.CreateGroup)
+	authenticated.POST("/groups", handlers.CreateGroup(wsHandler))
 	authenticated.GET("/groups", handlers.GetGroups)
 
 	authenticatedGroupMember := authenticated.Group("/groups/:groupID")
@@ -32,6 +32,7 @@ func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler) {
 	authenticatedGroupMember.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)
 	authenticatedGroupMember.GET("/ws/rooms", wsHandler.GetRooms)
 	authenticatedGroupMember.GET("/ws/rooms/clients", wsHandler.GetClients)
+	authenticatedGroupMember.POST("/ws/rooms/:roomId/messages", handlers.CreateMessage)
 	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages", handlers.GetRoomMessages)
 	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages/:userId", handlers.GetUserRoomMessages)
 	authenticatedGroupMember.DELETE("/ws/messages/:messageId", handlers.DeleteMessage)

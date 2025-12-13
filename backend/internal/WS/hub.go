@@ -1,6 +1,11 @@
 package WS
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Room struct {
 	ID      string             `json:"id"`
@@ -40,11 +45,12 @@ func (h *Hub) Run() {
 				room := h.Rooms[cl.RoomID]
 
 				message := &Message{
-					ID:       "",
-					RoomID:   cl.RoomID,
-					Content:  fmt.Sprintf(`%s has left the chat`, cl.Username),
-					Username: cl.Username,
-					UserID:   cl.ID,
+					ID:        uuid.New().String(),
+					RoomID:    cl.RoomID,
+					UserID:    cl.ID,
+					Content:   fmt.Sprintf(`%s has left the chat`, cl.Username),
+					Username:  cl.Username,
+					CreatedAt: time.Now().Format(time.RFC3339),
 				}
 
 				if _, ok := room.Clients[cl.ID]; ok {

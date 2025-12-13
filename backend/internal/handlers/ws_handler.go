@@ -3,8 +3,11 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/WS"
+	"github.com/KoiralaSam/Remindly/backend/internal/models"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"github.com/gin-gonic/gin"
@@ -46,21 +49,66 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		return origin == "http://localhost:5173"
+		// In development, accept WebSocket connections from any origin.
+		// If you want to restrict this, compare r.Header.Get("Origin")
+		// to your frontend origin instead of returning true.
+		return true
 	},
+	// Don't check origin in development - accept all
+	EnableCompression: false,
 }
 
 func (h *WShandler) JoinRoom(ctx *gin.Context) {
-	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	defer func() {
+		if r := recover(); r != nil {
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
+	}()
+
+	roomID := ctx.Param("roomId")
+	groupID := ctx.Param("groupID")
+	clientID := ctx.GetString("userID")
+
+	if clientID == "" {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user ID not found"})
 		return
 	}
 
-	roomID := ctx.Param("roomId")
-	clientID := ctx.Query("clientId")
-	username := ctx.Query("username")
+	// Get group name using group ID (before upgrade so we can return proper errors)
+	group, err := models.GetGroupByID(groupID)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "group not found"})
+		return
+	}
+
+	// Username is already set by middleware
+	username := ctx.GetString("username")
+	if username == "" {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "username not found"})
+		return
+	}
+
+	// Ensure room exists with group name
+	if _, ok := h.hub.Rooms[roomID]; !ok {
+		h.hub.Rooms[roomID] = &WS.Room{
+			ID:      roomID,
+			Name:    group.Name,
+			Clients: make(map[string]*WS.Client),
+		}
+	}
+
+	// Get the protocol from request (token passed as protocol)
+	requestedProtocol := ctx.GetHeader("Sec-WebSocket-Protocol")
+	var responseHeader http.Header
+	if requestedProtocol != "" {
+		responseHeader = make(http.Header)
+		responseHeader.Set("Sec-WebSocket-Protocol", requestedProtocol)
+	}
+
+	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, responseHeader)
+	if err != nil {
+		return
+	}
 
 	cl := &WS.Client{
 		Conn:     conn,
@@ -71,10 +119,12 @@ func (h *WShandler) JoinRoom(ctx *gin.Context) {
 	}
 
 	m := &WS.Message{
-		Content:  fmt.Sprintf(`%s has joined the chat`, username),
-		RoomID:   roomID,
-		Username: username,
-		UserID:   clientID,
+		ID:        uuid.New().String(),
+		RoomID:    roomID,
+		UserID:    clientID,
+		Content:   fmt.Sprintf(`%s has joined the chat`, username),
+		Username:  username,
+		CreatedAt: time.Now().Format(time.RFC3339),
 	}
 
 	//Register a new client through the register channel
@@ -82,9 +132,9 @@ func (h *WShandler) JoinRoom(ctx *gin.Context) {
 	//broadcast that message
 	h.hub.Broadcast <- m
 
-	//write Message
+	//write Message (runs in separate goroutine)
 	go cl.WriteMessage()
-	//read message
+	//read message (blocks until connection closes)
 	cl.ReadMessage(h.hub)
 }
 

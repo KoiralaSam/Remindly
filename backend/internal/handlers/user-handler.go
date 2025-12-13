@@ -119,7 +119,18 @@ func GetUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"id": user.ID, "name": user.Name, "email": user.Email, "phone": user.Phone, "created_at": user.CreatedAt})
+
+	// Get role modification permissions mapping
+	rolePermissions := models.GetModifiableRoles()
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"id":               user.ID,
+		"name":             user.Name,
+		"email":            user.Email,
+		"phone":            user.Phone,
+		"created_at":       user.CreatedAt,
+		"role_permissions": rolePermissions,
+	})
 }
 
 func UpdateUser(ctx *gin.Context) {

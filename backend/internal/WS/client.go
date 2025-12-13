@@ -80,13 +80,14 @@ func (c *Client) ReadMessage(h *Hub) {
 
 // persistMessage saves the message to the database
 func persistMessage(ctx context.Context, msg *Message) error {
-	query := `INSERT INTO messages (id, room_id, user_id, content, created_at, updated_at) 
-	          VALUES ($1, $2, $3, $4, $5, $6)`
+	query := `INSERT INTO messages (id, room_id, user_id, username, content, created_at, updated_at) 
+	          VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := db.GetDB().Exec(ctx, query,
 		msg.ID,
 		msg.RoomID,
 		msg.UserID,
+		msg.Username,
 		msg.Content,
 		time.Now(),
 		time.Now(),

@@ -10,6 +10,45 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CreateMessage creates a new message in a room
+func CreateMessage(ctx *gin.Context) {
+	roomID := ctx.Param("roomId")
+	userID := ctx.GetString("userID")
+	username := ctx.GetString("username")
+
+	var requestBody struct {
+		Content string `json:"content" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&requestBody); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	message := models.Message{
+		RoomID:   roomID,
+		UserID:   userID,
+		Username: username,
+		Content:  requestBody.Content,
+	}
+
+	msgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := message.Save(msgCtx); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"statusOk": false,
+			"error":    err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"statusOk": true,
+		"data":     message,
+	})
+}
+
 // GetRoomMessages retrieves all messages for a room with pagination
 func GetRoomMessages(ctx *gin.Context) {
 	roomID := ctx.Param("roomId")

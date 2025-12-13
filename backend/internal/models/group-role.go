@@ -32,15 +32,19 @@ func (mr *Role) GetAllRoles() ([]Role, error) {
 	return roles, nil
 }
 
-// CanAddRole checks if a given role (adderRole) has permission to add another role (targetRole)
-func CanModifyRole(adderRole, targetRole string) bool {
-	// Define role hierarchy and permissions
-	permissions := map[string][]string{
+// GetModifiableRoles returns a map of role to the list of roles it can modify
+func GetModifiableRoles() map[string][]string {
+	return map[string][]string{
 		"owner":  {"owner", "admin", "member", "viewer"}, // Owner can add anyone
 		"admin":  {"member", "viewer"},                   // Admin can add members and viewers
 		"member": {},                                     // Members cannot add anyone
 		"viewer": {},                                     // Viewers cannot add anyone
 	}
+}
+
+// CanAddRole checks if a given role (adderRole) has permission to add another role (targetRole)
+func CanModifyRole(adderRole, targetRole string) bool {
+	permissions := GetModifiableRoles()
 
 	allowedRoles, exists := permissions[adderRole]
 	if !exists {
@@ -49,19 +53,4 @@ func CanModifyRole(adderRole, targetRole string) bool {
 
 	// Check if targetRole is in the allowed list
 	return slices.Contains(allowedRoles, targetRole)
-}
-
-// GetAddableRoles returns a list of roles that the given role can add
-func GetAddableRoles(adderRole string) []string {
-	permissions := map[string][]string{
-		"owner":  {"owner", "admin", "member", "viewer"},
-		"admin":  {"member", "viewer"},
-		"member": {}, // Members cannot add anyone (consistent with CanModifyRole)
-		"viewer": {},
-	}
-
-	if roles, exists := permissions[adderRole]; exists {
-		return roles
-	}
-	return []string{}
 }
