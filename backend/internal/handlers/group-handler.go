@@ -3,49 +3,59 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/KoiralaSam/Remindly/backend/internal/WS"
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
 	"github.com/gin-gonic/gin"
 )
 
-func CreateGroup(ctx *gin.Context) {
-	var group models.Group
-	createdByUserId := ctx.GetString("userID")
+func CreateGroup(wsHandler *WShandler) func(*gin.Context) {
+	return func(ctx *gin.Context) {
+		var group models.Group
+		createdByUserId := ctx.GetString("userID")
 
-	err := ctx.ShouldBindJSON(&group)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": "Couldnot parse request data!",
+		err := ctx.ShouldBindJSON(&group)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "Couldnot parse request data!",
+			})
+			return
+		}
+
+		group.CreatedBy = createdByUserId
+		err = group.Create()
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Couldnot create group!",
+			})
+			return
+		}
+
+		// Automatically add the creator as an owner member
+		groupMember := &models.GroupMember{
+			GroupID: group.ID,
+			UserID:  createdByUserId,
+			Role:    "owner",
+		}
+		err = groupMember.Save()
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Group created but failed to add creator as member!",
+			})
+			return
+		}
+
+		// Automatically create a room for the group
+		wsHandler.hub.Rooms[group.ID] = &WS.Room{
+			ID:      group.ID,
+			Name:    group.Name,
+			Clients: make(map[string]*WS.Client),
+		}
+
+		ctx.JSON(http.StatusCreated, gin.H{
+			"message": "Group created successfully!",
+			"group":   group,
 		})
-		return
 	}
-
-	group.CreatedBy = createdByUserId
-	err = group.Create()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Couldnot create group!",
-		})
-		return
-	}
-
-	// Automatically add the creator as an owner member
-	groupMember := &models.GroupMember{
-		GroupID: group.ID,
-		UserID:  createdByUserId,
-		Role:    "owner",
-	}
-	err = groupMember.Save()
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Group created but failed to add creator as member!",
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusCreated, gin.H{
-		"message": "Group created successfully!",
-		"group":   group,
-	})
 }
 
 func GetGroupByID(ctx *gin.Context) {
@@ -119,6 +129,7 @@ func UpdateGroup(ctx *gin.Context) {
 		ID:          groupID,
 		Name:        requestBody.Name,
 		Description: requestBody.Description,
+		Type:        groupDetail.Type, // Preserve existing type (automatically managed by triggers)
 	}
 
 	// If name is not provided, keep the existing name

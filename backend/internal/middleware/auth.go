@@ -11,6 +11,10 @@ import (
 
 func AuthMiddleware(ctx *gin.Context) {
 	token := ctx.GetHeader("Authorization")
+	if token == "" {
+		// For WebSocket handshakes, allow JWT via Sec-WebSocket-Protocol
+		token = ctx.GetHeader("Sec-WebSocket-Protocol")
+	}
 
 	if token == "" {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -29,7 +33,7 @@ func AuthMiddleware(ctx *gin.Context) {
 	authDetails, err := utils.VerifyToken(token)
 
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized_token_unverified"})
 		return
 	}
 

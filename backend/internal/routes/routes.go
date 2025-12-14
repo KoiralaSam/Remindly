@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(server *gin.Engine) {
+func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler) {
 	// Authentication Routes
 	server.POST("/api/auth/register", handlers.RegisterUser)
 	server.POST("/api/auth/login", handlers.Login)
@@ -21,11 +21,21 @@ func SetupRoutes(server *gin.Engine) {
 	authenticated.PATCH("/users/me", handlers.UpdateUser)
 
 	// Group Routes
-	authenticated.POST("/groups", handlers.CreateGroup)
+	authenticated.POST("/groups", handlers.CreateGroup(wsHandler))
 	authenticated.GET("/groups", handlers.GetGroups)
 
 	authenticatedGroupMember := authenticated.Group("/groups/:groupID")
 	authenticatedGroupMember.Use(middleware.AuthGroupMemberMiddleware)
+
+	//websocket routes
+	authenticatedGroupMember.POST("/ws/createRoom", wsHandler.CreateRoom)
+	authenticatedGroupMember.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)
+	authenticatedGroupMember.GET("/ws/rooms", wsHandler.GetRooms)
+	authenticatedGroupMember.GET("/ws/rooms/clients", wsHandler.GetClients)
+	authenticatedGroupMember.POST("/ws/rooms/:roomId/messages", handlers.CreateMessage)
+	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages", handlers.GetRoomMessages)
+	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages/:userId", handlers.GetUserRoomMessages)
+	authenticatedGroupMember.DELETE("/ws/messages/:messageId", handlers.DeleteMessage)
 
 	authenticatedGroupMember.GET("", handlers.GetGroupByID)
 	authenticatedGroupMember.PATCH("", handlers.UpdateGroup)
@@ -37,8 +47,13 @@ func SetupRoutes(server *gin.Engine) {
 	authenticatedGroupMember.PATCH("members/:userId", handlers.UpdateGroupMemberRole)
 	authenticatedGroupMember.DELETE("members/:userId", handlers.DeleteGroupMember)
 
+	// Group Invitation Routes
+	authenticated.GET("/invitations", handlers.GetInvitations)
+	authenticated.POST("/invitations/:invitationID/accept", handlers.AcceptInvitation)
+	authenticated.POST("/invitations/:invitationID/decline", handlers.DeclineInvitation)
+
 	// Task Routes
-	authenticatedGroupMember.POST("/tasks", handlers.CreateTask)
+	authenticatedGroupMember.POST("/tasks", handlers.CreateTask(wsHandler.GetHub()))
 	authenticatedGroupMember.GET("/tasks", handlers.GetGroupTasks)
 	authenticated.GET("/tasks/user", handlers.GetUserTasks)
 	authenticatedGroupMember.GET("/tasks/:taskId", handlers.GetTaskByIDWithAssignees)

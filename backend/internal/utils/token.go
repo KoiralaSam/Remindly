@@ -55,7 +55,7 @@ func VerifyToken(token string) (*AuthDetails, error) {
 
 	authUuid, ok := claims["auth_uuid"].(string)
 	if !ok {
-		return nil, errors.New("could not extract email from token")
+		return nil, errors.New("could not extract uuid from token")
 	}
 
 	authDetails := &AuthDetails{

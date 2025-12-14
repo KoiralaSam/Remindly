@@ -6,7 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/KoiralaSam/Remindly/backend/internal/WS"
 	"github.com/KoiralaSam/Remindly/backend/internal/db"
+	"github.com/KoiralaSam/Remindly/backend/internal/handlers"
 	"github.com/KoiralaSam/Remindly/backend/internal/routes"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -46,10 +48,14 @@ func main() {
 	defer db.GetDB().Close()
 
 	server := gin.Default()
+	hub := WS.NewHub()
+	wsHandler := handlers.NewHandler(hub)
+
+	go hub.Run()
 
 	// Configure CORS middleware
 	server.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -57,7 +63,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	routes.SetupRoutes(server)
+	routes.SetupRoutes(server, wsHandler)
 
 	err = server.Run(":8080")
 	if err != nil {
