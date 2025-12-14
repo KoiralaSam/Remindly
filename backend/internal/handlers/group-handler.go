@@ -129,6 +129,7 @@ func UpdateGroup(ctx *gin.Context) {
 		ID:          groupID,
 		Name:        requestBody.Name,
 		Description: requestBody.Description,
+		Type:        groupDetail.Type, // Preserve existing type (automatically managed by triggers)
 	}
 
 	// If name is not provided, keep the existing name

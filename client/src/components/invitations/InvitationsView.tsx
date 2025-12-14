@@ -133,8 +133,13 @@ export const InvitationsView: FC = () => {
     expired: "text-gray-600 dark:text-gray-400",
   };
 
-  const getGroupName = (groupId: string) => {
-    const group = groups.find((g) => g.id === groupId);
+  const getGroupName = (invitation: GroupInvitation) => {
+    // Prefer group_name from invitation if available (from backend JOIN)
+    if (invitation.group_name) {
+      return invitation.group_name;
+    }
+    // Fallback to finding group in context
+    const group = groups.find((g) => g.id === invitation.group_id);
     return group?.name || "Unknown Group";
   };
 
@@ -226,7 +231,7 @@ export const InvitationsView: FC = () => {
                             <Mail className="h-5 w-5 text-muted-foreground" />
                             <div>
                               <h3 className="font-medium text-foreground">
-                                {getGroupName(invitation.group_id)}
+                                {getGroupName(invitation)}
                               </h3>
                               <p className="text-sm text-muted-foreground">
                                 Role:{" "}
