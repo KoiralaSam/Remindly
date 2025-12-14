@@ -8,6 +8,9 @@ export type SidebarTab =
   | "apps"
   | null;
 
+export type MessagesSubTab = "messages" | "invitations";
+export type GroupSubTab = "messages" | "tasks";
+
 interface SidebarContextType {
   activeTab: SidebarTab;
   setActiveTab: (tab: SidebarTab) => void;
@@ -15,6 +18,10 @@ interface SidebarContextType {
   setSelectedGroupId: (groupId: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  messagesSubTab: MessagesSubTab;
+  setMessagesSubTab: (tab: MessagesSubTab) => void;
+  groupSubTab: GroupSubTab;
+  setGroupSubTab: (tab: GroupSubTab) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -37,6 +44,9 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
   const [activeTab, setActiveTab] = useState<SidebarTab>("groups");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [messagesSubTab, setMessagesSubTab] =
+    useState<MessagesSubTab>("messages");
+  const [groupSubTab, setGroupSubTab] = useState<GroupSubTab>("messages");
 
   return (
     <SidebarContext.Provider
@@ -47,6 +57,10 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
         setSelectedGroupId,
         searchQuery,
         setSearchQuery,
+        messagesSubTab,
+        setMessagesSubTab,
+        groupSubTab,
+        setGroupSubTab,
       }}
     >
       {children}

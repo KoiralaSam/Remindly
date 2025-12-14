@@ -6,6 +6,8 @@ import {
 } from "react-router-dom";
 import { UserProvider } from "./context/UserContext";
 import { GroupProvider } from "./context/GroupContext";
+import { GroupMemberProvider } from "./context/GroupMemberContext";
+import { InvitationProvider } from "./context/InvitationContext";
 import { MessageProvider } from "./context/MessageContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -18,17 +20,21 @@ function App() {
     <ThemeProvider>
       <UserProvider>
         <GroupProvider>
-          <MessageProvider>
-            <SidebarProvider>
-              <Router>
-                <Routes>
-                  <Route path="/" element={<Homepage />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Router>
-            </SidebarProvider>
-          </MessageProvider>
+          <GroupMemberProvider>
+            <InvitationProvider>
+              <MessageProvider>
+                <SidebarProvider>
+                  <Router>
+                    <Routes>
+                      <Route path="/" element={<Homepage />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Router>
+                </SidebarProvider>
+              </MessageProvider>
+            </InvitationProvider>
+          </GroupMemberProvider>
         </GroupProvider>
       </UserProvider>
     </ThemeProvider>
