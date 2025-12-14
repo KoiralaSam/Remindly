@@ -53,7 +53,10 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen w-full">
-      <CreateGroupModal isOpen={isCreateGroupModalOpen} onClose={() => setIsCreateGroupModalOpen(false)} />
+      <CreateGroupModal
+        isOpen={isCreateGroupModalOpen}
+        onClose={() => setIsCreateGroupModalOpen(false)}
+      />
       <div className="relative z-50 w-full">
         <SearchBar />
       </div>
