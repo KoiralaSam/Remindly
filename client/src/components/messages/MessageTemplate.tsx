@@ -1,4 +1,6 @@
 import { FC } from "react";
+import { useUser } from "@/context/UserContext";
+import { useSidebar } from "@/context/SidebarContext";
 import {
   Plus,
   Bold,
@@ -45,6 +47,9 @@ export const MessageTemplate: FC<MessageTemplateProps> = ({
   onSendMessage,
   isSending = false,
 }) => {
+  const { user } = useUser();
+  const { setGroupSubTab } = useSidebar();
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Main Content Area */}
@@ -61,37 +66,6 @@ export const MessageTemplate: FC<MessageTemplateProps> = ({
             <Star className="h-4 w-4 text-muted-foreground" />
           </p>
 
-          {/* Setup Cards */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="border border-border rounded-lg p-4 hover:bg-accent cursor-pointer transition-colors bg-card">
-              <div className="text-sm font-medium mb-1 text-foreground">
-                Add company handbook
-              </div>
-              <div className="text-xs text-muted-foreground mb-3">
-                Canvas template
-              </div>
-              <div className="bg-muted text-muted-foreground rounded p-2 text-xs">
-                Onboarding checklist
-              </div>
-            </div>
-            <div className="border border-border rounded-lg p-4 hover:bg-accent cursor-pointer transition-colors bg-card">
-              <div className="text-sm font-medium mb-1 text-foreground">
-                Personalize a welcome message
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Record a short video clip
-              </div>
-            </div>
-            <div className="border border-border rounded-lg p-4 hover:bg-accent cursor-pointer transition-colors bg-card">
-              <div className="text-sm font-medium mb-1 text-foreground">
-                Invite teammates
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Add your whole team
-              </div>
-            </div>
-          </div>
-
           {/* Date Separator */}
           <div className="flex items-center gap-2 my-4">
             <div className="flex-1 border-t border-border"></div>
@@ -103,28 +77,76 @@ export const MessageTemplate: FC<MessageTemplateProps> = ({
           </div>
 
           {/* Message History */}
-          {messages.map((msg) => (
-            <div key={msg.id} className="flex items-start gap-3 mb-4">
-              <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0">
-                {msg.username?.split(" ")[0]?.charAt(0)}
-                {msg.username?.split(" ")[1]?.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm text-foreground">
-                    {msg.username}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(msg.created_at).toLocaleTimeString([], {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </span>
+          {messages.map((msg) => {
+            const isCurrentUser = msg.user_id === user?.id;
+            return (
+              <div
+                key={msg.id}
+                className={`flex items-start gap-3 mb-4 ${
+                  isCurrentUser ? "flex-row-reverse" : ""
+                }`}
+              >
+                {!isCurrentUser && (
+                  <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0">
+                    {msg.username?.split(" ")[0]?.charAt(0)}
+                    {msg.username?.split(" ")[1]?.charAt(0)}
+                  </div>
+                )}
+                <div
+                  className={`flex flex-col ${
+                    isCurrentUser ? "items-end" : "items-start"
+                  } max-w-[70%]`}
+                >
+                  {!isCurrentUser && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm text-foreground">
+                        {msg.username}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {isCurrentUser && (
+                    <span className="text-xs text-muted-foreground mb-1">
+                      {new Date(msg.created_at).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
+                  <div
+                    className={`rounded-lg px-3 py-2 text-sm ${
+                      isCurrentUser
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm">{msg.content}</p>
+                      {msg.content.includes("has created a task") && (
+                        <Button
+                          size="sm"
+                          variant={isCurrentUser ? "secondary" : "outline"}
+                          className={`h-6 px-2 text-xs ${
+                            isCurrentUser
+                              ? "bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground border-primary-foreground/30"
+                              : ""
+                          }`}
+                          onClick={() => setGroupSubTab("tasks")}
+                        >
+                          View
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-foreground">{msg.content}</p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

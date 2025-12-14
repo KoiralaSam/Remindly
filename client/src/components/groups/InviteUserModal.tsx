@@ -1,5 +1,6 @@
 import { FC, useState, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
+import { useGroupMembers } from "@/context/GroupMemberContext";
 import { apiConfig } from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,67 +12,38 @@ interface InviteUserModalProps {
   groupId: string;
 }
 
-interface GroupMember {
-  id: string;
-  group_id: string;
-  user_id: string;
-  role: string;
-}
-
 export const InviteUserModal: FC<InviteUserModalProps> = ({
   isOpen,
   onClose,
   groupId,
 }) => {
   const { user } = useUser();
+  const { getGroupMembers, refreshGroupMembers } = useGroupMembers();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState(false);
-  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
 
-  // Fetch user's role in the group and determine available roles
+  // Get user's role in the group from context and determine available roles
   useEffect(() => {
-    if (!isOpen || !user?.token || !user?.rolePermissions) return;
+    if (!isOpen || !user?.rolePermissions) return;
 
-    const fetchUserRole = async () => {
-      try {
-        const response = await fetch(apiConfig.groups.members(groupId), {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-            "Content-Type": "application/json",
-          },
-        });
+    const groupMembers = getGroupMembers(groupId);
+    const currentUserMember = groupMembers.find(
+      (member) => member.user_id === user.id
+    );
 
-        if (response.ok) {
-          const data = await response.json();
-          const members = (data.group_members || []) as GroupMember[];
-          const currentUserMember = members.find(
-            (member) => member.user_id === user.id
-          );
+    if (currentUserMember && user.rolePermissions) {
+      // Get roles the user can modify based on their role
+      const modifiableRoles =
+        user.rolePermissions[currentUserMember.role] || [];
 
-          if (currentUserMember && user.rolePermissions) {
-            // Get roles the user can modify based on their role
-            const modifiableRoles =
-              user.rolePermissions[currentUserMember.role] || [];
-            setAvailableRoles(modifiableRoles);
-
-            setAvailableRoles(modifiableRoles);
-
-            // Set default role to first available role
-            if (modifiableRoles.length > 0) {
-              setRole(modifiableRoles[0]);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch user role:", err);
+      // Set default role to first available role
+      if (modifiableRoles.length > 0 && !modifiableRoles.includes(role)) {
+        setRole(modifiableRoles[0]);
       }
-    };
-
-    fetchUserRole();
+    }
 
     // Reset when modal closes
     if (!isOpen) {
@@ -79,16 +51,18 @@ export const InviteUserModal: FC<InviteUserModalProps> = ({
       setRole("member");
       setError("");
       setSuccess(false);
-      setAvailableRoles([]);
     }
-  }, [isOpen, groupId, user]);
+  }, [isOpen, groupId, user, getGroupMembers, role]);
 
-  // Update role if current selection is not in available roles
-  useEffect(() => {
-    if (availableRoles.length > 0 && !availableRoles.includes(role)) {
-      setRole(availableRoles[0]);
-    }
-  }, [availableRoles, role]);
+  // Calculate available roles based on user's role in group
+  const groupMembers = getGroupMembers(groupId);
+  const currentUserMember = groupMembers.find(
+    (member) => member.user_id === user?.id
+  );
+  const availableRoles =
+    currentUserMember && user?.rolePermissions
+      ? user.rolePermissions[currentUserMember.role] || []
+      : [];
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +112,9 @@ export const InviteUserModal: FC<InviteUserModalProps> = ({
       setSuccess(true);
       setEmail("");
       setLoading(false);
+
+      // Refresh group members after successful invite
+      await refreshGroupMembers(groupId);
 
       // Close modal after a short delay
       setTimeout(() => {
