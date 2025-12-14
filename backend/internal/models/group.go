@@ -11,20 +11,30 @@ type Group struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	Type        string    `json:"type"` // "private", "direct", or "public"
 	CreatedBy   string    `json:"created_by"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (group *Group) Create() error {
+	// If type is not explicitly set, pass NULL so trigger can set it based on member count
+	var typeValue interface{}
+	if group.Type == "" {
+		typeValue = nil
+	} else {
+		typeValue = group.Type
+	}
+
 	query := `
-		INSERT INTO groups (name, description, created_by)
-		VALUES ($1, $2, $3)
-		RETURNING id, created_at, updated_at
+		INSERT INTO groups (name, description, created_by, type)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, type, created_at, updated_at
 	`
 
-	err := db.GetDB().QueryRow(context.Background(), query, group.Name, group.Description, group.CreatedBy).Scan(
+	err := db.GetDB().QueryRow(context.Background(), query, group.Name, group.Description, group.CreatedBy, typeValue).Scan(
 		&group.ID,
+		&group.Type,
 		&group.CreatedAt,
 		&group.UpdatedAt,
 	)
@@ -45,6 +55,7 @@ func GetGroupByID(groupID string) (*GroupDetail, error) {
 			g.id,
 			g.name,
 			g.description,
+			g.type,
 			g.created_by,
 			g.created_at,
 			g.updated_at,
@@ -60,6 +71,7 @@ func GetGroupByID(groupID string) (*GroupDetail, error) {
 		&groupDetail.ID,
 		&groupDetail.Name,
 		&groupDetail.Description,
+		&groupDetail.Type,
 		&groupDetail.CreatedBy,
 		&groupDetail.CreatedAt,
 		&groupDetail.UpdatedAt,
@@ -73,9 +85,9 @@ func GetGroupByID(groupID string) (*GroupDetail, error) {
 }
 
 func (group *Group) Update() error {
-	query := `UPDATE groups SET name = $1, description = $2, updated_at = NOW() WHERE id = $3 RETURNING updated_at`
+	query := `UPDATE groups SET name = $1, description = $2, updated_at = NOW() WHERE id = $3 RETURNING type, updated_at`
 
-	err := db.GetDB().QueryRow(context.Background(), query, group.Name, group.Description, group.ID).Scan(&group.UpdatedAt)
+	err := db.GetDB().QueryRow(context.Background(), query, group.Name, group.Description, group.ID).Scan(&group.Type, &group.UpdatedAt)
 	if err != nil {
 		return err
 	}
@@ -85,7 +97,7 @@ func (group *Group) Update() error {
 
 func GetAllGroups(userID string) ([]Group, error) {
 	query := `
-		SELECT DISTINCT g.id, g.name, g.description, g.created_by, g.created_at, g.updated_at
+		SELECT DISTINCT g.id, g.name, g.description, g.type, g.created_by, g.created_at, g.updated_at
 		FROM groups g
 		INNER JOIN group_members gm ON g.id = gm.group_id
 		WHERE gm.user_id = $1
@@ -101,7 +113,7 @@ func GetAllGroups(userID string) ([]Group, error) {
 	var groups []Group
 	for rows.Next() {
 		var group Group
-		err := rows.Scan(&group.ID, &group.Name, &group.Description, &group.CreatedBy, &group.CreatedAt, &group.UpdatedAt)
+		err := rows.Scan(&group.ID, &group.Name, &group.Description, &group.Type, &group.CreatedBy, &group.CreatedAt, &group.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
