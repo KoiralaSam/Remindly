@@ -19,6 +19,7 @@ type GroupInvitation struct {
 	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
+	GroupName    *string    `json:"group_name,omitempty"` // Optional field populated when joining with groups table
 }
 
 // Save creates a new group invitation
@@ -174,10 +175,11 @@ func GetPendingInvitationsByUserID(ctx context.Context, userID string) ([]GroupI
 
 // GetAllInvitationsByEmail retrieves all invitations for a given email (all statuses)
 func GetAllInvitationsByEmail(ctx context.Context, email string) ([]GroupInvitation, error) {
-	query := `SELECT id, group_id, inviter_id, invitee_email, invitee_id, role, status, expires_at, created_at, updated_at 
-	          FROM group_invitations 
-	          WHERE invitee_email = $1 
-	          ORDER BY created_at DESC`
+	query := `SELECT gi.id, gi.group_id, gi.inviter_id, gi.invitee_email, gi.invitee_id, gi.role, gi.status, gi.expires_at, gi.created_at, gi.updated_at, g.name as group_name
+	          FROM group_invitations gi
+	          JOIN groups g ON gi.group_id = g.id  
+	          WHERE gi.invitee_email = $1 
+	          ORDER BY gi.created_at DESC`
 
 	rows, err := db.GetDB().Query(ctx, query, email)
 	if err != nil {
@@ -190,6 +192,7 @@ func GetAllInvitationsByEmail(ctx context.Context, email string) ([]GroupInvitat
 		var inv GroupInvitation
 		var inviteeID *string
 		var expiresAt *time.Time
+		var groupName *string
 
 		err := rows.Scan(
 			&inv.ID,
@@ -202,6 +205,7 @@ func GetAllInvitationsByEmail(ctx context.Context, email string) ([]GroupInvitat
 			&expiresAt,
 			&inv.CreatedAt,
 			&inv.UpdatedAt,
+			&groupName,
 		)
 		if err != nil {
 			return nil, errors.New("failed to scan invitation: " + err.Error())
@@ -209,6 +213,7 @@ func GetAllInvitationsByEmail(ctx context.Context, email string) ([]GroupInvitat
 
 		inv.InviteeID = inviteeID
 		inv.ExpiresAt = expiresAt
+		inv.GroupName = groupName
 		invitations = append(invitations, inv)
 	}
 
@@ -217,10 +222,11 @@ func GetAllInvitationsByEmail(ctx context.Context, email string) ([]GroupInvitat
 
 // GetAllInvitationsByUserID retrieves all invitations for a given user ID (all statuses)
 func GetAllInvitationsByUserID(ctx context.Context, userID string) ([]GroupInvitation, error) {
-	query := `SELECT id, group_id, inviter_id, invitee_email, invitee_id, role, status, expires_at, created_at, updated_at 
-	          FROM group_invitations 
-	          WHERE invitee_id = $1 
-	          ORDER BY created_at DESC`
+	query := `SELECT gi.id, gi.group_id, gi.inviter_id, gi.invitee_email, gi.invitee_id, gi.role, gi.status, gi.expires_at, gi.created_at, gi.updated_at, g.name as group_name
+	          FROM group_invitations gi
+	          JOIN groups g ON gi.group_id = g.id  
+	          WHERE gi.invitee_id = $1 
+	          ORDER BY gi.created_at DESC`
 
 	rows, err := db.GetDB().Query(ctx, query, userID)
 	if err != nil {
@@ -233,6 +239,7 @@ func GetAllInvitationsByUserID(ctx context.Context, userID string) ([]GroupInvit
 		var inv GroupInvitation
 		var inviteeID *string
 		var expiresAt *time.Time
+		var groupName *string
 
 		err := rows.Scan(
 			&inv.ID,
@@ -245,6 +252,7 @@ func GetAllInvitationsByUserID(ctx context.Context, userID string) ([]GroupInvit
 			&expiresAt,
 			&inv.CreatedAt,
 			&inv.UpdatedAt,
+			&groupName,
 		)
 		if err != nil {
 			return nil, errors.New("failed to scan invitation: " + err.Error())
@@ -252,6 +260,7 @@ func GetAllInvitationsByUserID(ctx context.Context, userID string) ([]GroupInvit
 
 		inv.InviteeID = inviteeID
 		inv.ExpiresAt = expiresAt
+		inv.GroupName = groupName
 		invitations = append(invitations, inv)
 	}
 

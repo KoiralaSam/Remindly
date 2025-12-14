@@ -4,6 +4,7 @@ export interface Group {
   id: string;
   name: string;
   description: string;
+  type: string; // "private", "direct", or "public"
   created_by: string;
   created_at: string;
   updated_at: string;

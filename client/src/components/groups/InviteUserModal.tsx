@@ -17,8 +17,13 @@ export const InviteUserModal: FC<InviteUserModalProps> = ({
   onClose,
   groupId,
 }) => {
-  const { user } = useUser();
-  const { getGroupMembers, refreshGroupMembers } = useGroupMembers();
+  const { user, fetchUserData } = useUser();
+  const {
+    getGroupMembers,
+    refreshGroupMembers,
+    fetchGroupMembers,
+    isLoading: isLoadingMembers,
+  } = useGroupMembers();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [loading, setLoading] = useState(false);
@@ -27,9 +32,21 @@ export const InviteUserModal: FC<InviteUserModalProps> = ({
 
   // Get user's role in the group from context and determine available roles
   useEffect(() => {
-    if (!isOpen || !user?.rolePermissions) return;
+    if (!isOpen) return;
 
+    // Fetch user data (role permissions) if not loaded
+    if (!user?.rolePermissions) {
+      fetchUserData();
+      return;
+    }
+
+    // Fetch group members if not loaded yet
     const groupMembers = getGroupMembers(groupId);
+    if (groupMembers.length === 0) {
+      fetchGroupMembers(groupId);
+      return;
+    }
+
     const currentUserMember = groupMembers.find(
       (member) => member.user_id === user.id
     );
@@ -44,21 +61,23 @@ export const InviteUserModal: FC<InviteUserModalProps> = ({
         setRole(modifiableRoles[0]);
       }
     }
-
-    // Reset when modal closes
-    if (!isOpen) {
-      setEmail("");
-      setRole("member");
-      setError("");
-      setSuccess(false);
-    }
-  }, [isOpen, groupId, user, getGroupMembers, role]);
+  }, [
+    isOpen,
+    groupId,
+    user,
+    getGroupMembers,
+    fetchGroupMembers,
+    fetchUserData,
+    role,
+  ]);
 
   // Calculate available roles based on user's role in group
   const groupMembers = getGroupMembers(groupId);
   const currentUserMember = groupMembers.find(
     (member) => member.user_id === user?.id
   );
+
+  // Get available roles
   const availableRoles =
     currentUserMember && user?.rolePermissions
       ? user.rolePermissions[currentUserMember.role] || []
@@ -167,7 +186,9 @@ export const InviteUserModal: FC<InviteUserModalProps> = ({
             <label className="block text-sm font-medium text-foreground mb-2">
               Role
             </label>
-            {availableRoles.length > 0 ? (
+            {isLoadingMembers || !user?.rolePermissions ? (
+              <div className="text-sm text-muted-foreground">Loading...</div>
+            ) : availableRoles.length > 0 ? (
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
