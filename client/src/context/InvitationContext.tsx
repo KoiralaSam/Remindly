@@ -19,6 +19,7 @@ export interface GroupInvitation {
   expires_at?: string;
   created_at: string;
   updated_at: string;
+  group_name?: string;
 }
 
 interface InvitationContextType {

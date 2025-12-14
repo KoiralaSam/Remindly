@@ -1,6 +1,6 @@
 import { FC, useState } from "react";
 import { useUser } from "@/context/UserContext";
-import { useGroups } from "@/context/GroupContext";
+import { useGroups, Group } from "@/context/GroupContext";
 import { apiConfig } from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,10 @@ interface CreateGroupModalProps {
   onClose: () => void;
 }
 
-export const CreateGroupModal: FC<CreateGroupModalProps> = ({ isOpen, onClose }) => {
+export const CreateGroupModal: FC<CreateGroupModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const { user } = useUser();
   const { groups, setGroups } = useGroups();
   const [groupName, setGroupName] = useState("");
@@ -21,7 +24,7 @@ export const CreateGroupModal: FC<CreateGroupModalProps> = ({ isOpen, onClose })
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!groupName.trim()) {
       setError("Group name is required");
       return;
@@ -59,8 +62,15 @@ export const CreateGroupModal: FC<CreateGroupModalProps> = ({ isOpen, onClose })
       }
 
       // Add the new group to the context
-      setGroups([...groups, data]);
-      
+      const responseData = data as { group: Group; message?: string };
+      if (responseData.group) {
+        setGroups([...groups, responseData.group]);
+      } else {
+        setError("Invalid response from server");
+        setLoading(false);
+        return;
+      }
+
       // Reset form and close modal
       setGroupName("");
       setGroupDescription("");
@@ -80,7 +90,9 @@ export const CreateGroupModal: FC<CreateGroupModalProps> = ({ isOpen, onClose })
       <div className="bg-background border border-border rounded-lg shadow-2xl w-full max-w-md p-6 pointer-events-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-foreground">Create a New Group</h2>
+          <h2 className="text-xl font-semibold text-foreground">
+            Create a New Group
+          </h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -137,11 +149,7 @@ export const CreateGroupModal: FC<CreateGroupModalProps> = ({ isOpen, onClose })
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="flex-1"
-            >
+            <Button type="submit" disabled={loading} className="flex-1">
               {loading ? "Creating..." : "Create Group"}
             </Button>
           </div>
