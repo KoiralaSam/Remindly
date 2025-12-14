@@ -47,8 +47,13 @@ func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler) {
 	authenticatedGroupMember.PATCH("members/:userId", handlers.UpdateGroupMemberRole)
 	authenticatedGroupMember.DELETE("members/:userId", handlers.DeleteGroupMember)
 
+	// Group Invitation Routes
+	authenticated.GET("/invitations", handlers.GetInvitations)
+	authenticated.POST("/invitations/:invitationID/accept", handlers.AcceptInvitation)
+	authenticated.POST("/invitations/:invitationID/decline", handlers.DeclineInvitation)
+
 	// Task Routes
-	authenticatedGroupMember.POST("/tasks", handlers.CreateTask)
+	authenticatedGroupMember.POST("/tasks", handlers.CreateTask(wsHandler.GetHub()))
 	authenticatedGroupMember.GET("/tasks", handlers.GetGroupTasks)
 	authenticated.GET("/tasks/user", handlers.GetUserTasks)
 	authenticatedGroupMember.GET("/tasks/:taskId", handlers.GetTaskByIDWithAssignees)

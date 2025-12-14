@@ -9,6 +9,12 @@ import (
 
 func AddGroupMember(ctx *gin.Context) {
 	groupID := ctx.Param("groupID")
+	inviterID := ctx.GetString("userID")
+
+	if inviterID == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user ID not found"})
+		return
+	}
 
 	var requestBody struct {
 		UserID string `json:"user_id"`
@@ -22,22 +28,9 @@ func AddGroupMember(ctx *gin.Context) {
 		return
 	}
 
-	var userID string
-
-	if requestBody.UserID != "" {
-		userID = requestBody.UserID
-	} else if requestBody.Email != "" {
-		user := &models.User{
-			Email: requestBody.Email,
-		}
-		err = user.GetByEmail()
-		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "user not found with the provided email"})
-			return
-		}
-		userID = user.ID
-	} else {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "either user_id or email must be provided"})
+	// Email is required for invitations
+	if requestBody.Email == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
 		return
 	}
 
@@ -49,19 +42,85 @@ func AddGroupMember(ctx *gin.Context) {
 		return
 	}
 
-	groupMember := &models.GroupMember{
-		GroupID: groupID,
-		UserID:  userID,
-		Role:    requestBody.Role,
+	reqCtx := ctx.Request.Context()
+
+	// Check if user is already a member of the group
+	var inviteeID *string
+	if requestBody.UserID != "" {
+		inviteeID = &requestBody.UserID
+		// Check if user is already a member
+		groupMember := &models.GroupMember{
+			GroupID: groupID,
+			UserID:  requestBody.UserID,
+		}
+		isMember, err := groupMember.IsMember(reqCtx)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if isMember {
+			ctx.JSON(http.StatusConflict, gin.H{"error": "user is already a member of this group"})
+			return
+		}
+	} else {
+		// Try to find user by email
+		user := &models.User{
+			Email: requestBody.Email,
+		}
+		err = user.GetByEmail()
+		if err == nil {
+			// User exists, set invitee_id
+			inviteeID = &user.ID
+			// Check if user is already a member
+			groupMember := &models.GroupMember{
+				GroupID: groupID,
+				UserID:  user.ID,
+			}
+			isMember, err := groupMember.IsMember(reqCtx)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if isMember {
+				ctx.JSON(http.StatusConflict, gin.H{"error": "user is already a member of this group"})
+				return
+			}
+		}
+		// If user doesn't exist, inviteeID remains nil (will be set when they accept)
 	}
 
-	err = groupMember.Save()
+	// Check if a pending invitation already exists for this group and email
+	exists, err := models.CheckPendingInvitationExists(reqCtx, groupID, requestBody.Email)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if exists {
+		ctx.JSON(http.StatusConflict, gin.H{"error": "a pending invitation already exists for this email"})
+		return
+	}
+
+	// Create the invitation
+	invitation := &models.GroupInvitation{
+		GroupID:      groupID,
+		InviterID:    inviterID,
+		InviteeEmail: requestBody.Email,
+		InviteeID:    inviteeID,
+		Role:         requestBody.Role,
+		Status:       "pending",
+		ExpiresAt:    nil, // Can be set later if needed
+	}
+
+	err = invitation.Save(reqCtx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"message": "Group member added successfully"})
+	ctx.JSON(http.StatusCreated, gin.H{
+		"message":    "Invitation sent successfully",
+		"invitation": invitation,
+	})
 }
 
 func GetGroupMembers(ctx *gin.Context) {

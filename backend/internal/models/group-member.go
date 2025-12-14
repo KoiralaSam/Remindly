@@ -16,6 +16,15 @@ type GroupMember struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type GroupMemberWithUser struct {
+	GroupMember
+	User struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Phone string `json:"phone"`
+	} `json:"user"`
+}
+
 func (gm *GroupMember) Save() error {
 	query := `INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, $3) RETURNING id, group_id, user_id, role, created_at`
 	err := db.GetDB().QueryRow(context.Background(), query, gm.GroupID, gm.UserID, gm.Role).Scan(&gm.ID, &gm.GroupID, &gm.UserID, &gm.Role, &gm.CreatedAt)
@@ -34,17 +43,29 @@ func (gm *GroupMember) Get() error {
 	return nil
 }
 
-func (gm *GroupMember) GetByGroupID() ([]GroupMember, error) {
-	query := `SELECT id, group_id, user_id, role, created_at FROM group_members WHERE group_id = $1`
+func (gm *GroupMember) GetByGroupID() ([]GroupMemberWithUser, error) {
+	query := `SELECT gm.id, gm.group_id, gm.user_id, gm.role, gm.created_at, u.name, u.email, u.phone 
+	          FROM group_members gm 
+	          LEFT JOIN users u ON gm.user_id = u.id 
+	          WHERE gm.group_id = $1`
 	rows, err := db.GetDB().Query(context.Background(), query, gm.GroupID)
 	if err != nil {
 		return nil, errors.New("failed to get group members: " + err.Error())
 	}
 	defer rows.Close()
-	groupMembers := []GroupMember{}
+	groupMembers := []GroupMemberWithUser{}
 	for rows.Next() {
-		var member GroupMember
-		err := rows.Scan(&member.ID, &member.GroupID, &member.UserID, &member.Role, &member.CreatedAt)
+		var member GroupMemberWithUser
+		err := rows.Scan(
+			&member.GroupMember.ID,
+			&member.GroupMember.GroupID,
+			&member.GroupMember.UserID,
+			&member.GroupMember.Role,
+			&member.GroupMember.CreatedAt,
+			&member.User.Name,
+			&member.User.Email,
+			&member.User.Phone,
+		)
 		if err != nil {
 			return nil, errors.New("failed to scan group member: " + err.Error())
 		}

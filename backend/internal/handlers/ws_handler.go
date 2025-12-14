@@ -23,6 +23,10 @@ func NewHandler(hub *WS.Hub) *WShandler {
 	}
 }
 
+func (h *WShandler) GetHub() *WS.Hub {
+	return h.hub
+}
+
 type CreateRoomReq struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

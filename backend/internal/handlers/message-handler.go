@@ -127,11 +127,34 @@ func GetUserRoomMessages(ctx *gin.Context) {
 // DeleteMessage deletes a message by ID
 func DeleteMessage(ctx *gin.Context) {
 	messageID := ctx.Param("messageId")
+	userID := ctx.GetString("userID")
+
+	if userID == "" {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "user ID not found"})
+		return
+	}
 
 	msgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := models.DeleteMessage(msgCtx, messageID)
+	// First, get the message to check if the user is the creator
+	message := &models.Message{
+		ID: messageID,
+	}
+	err := message.GetByID(msgCtx)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "message not found"})
+		return
+	}
+
+	// Check if the current user is the creator of the message
+	if message.UserID != userID {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "you can only delete your own messages"})
+		return
+	}
+
+	// Delete the message
+	err = models.DeleteMessage(msgCtx, messageID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

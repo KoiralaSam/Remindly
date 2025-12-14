@@ -1,90 +1,136 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/KoiralaSam/Remindly/backend/internal/WS"
+	"github.com/KoiralaSam/Remindly/backend/internal/db"
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-func CreateTask(ctx *gin.Context) {
-	groupID := ctx.Param("groupID")
-	userID := ctx.GetString("userID")
-	role := ctx.GetString("role")
+func CreateTask(hub *WS.Hub) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		groupID := ctx.Param("groupID")
+		userID := ctx.GetString("userID")
+		role := ctx.GetString("role")
 
-	var requestBody struct {
-		Title       string   `json:"title" binding:"required"`
-		Description string   `json:"description" binding:"required"`
-		DueDate     string   `json:"due_date" binding:"required"`
-		Assignees   []string `json:"assignees" binding:"required"`
-	}
-
-	err := ctx.ShouldBindJSON(&requestBody)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Parse due_date string to time.Time
-	dueDate, err := time.Parse(time.RFC3339, requestBody.DueDate)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid due_date format. Use RFC3339 format (e.g., 2025-12-31T23:59:59Z)"})
-		return
-	}
-
-	// Set status based on role: owners and admins get "active", members and viewers get "pending"
-	status := "pending"
-	if role == "owner" || role == "admin" {
-		status = "active"
-	}
-
-	task := models.Task{
-		GroupID:     groupID,
-		Title:       requestBody.Title,
-		Description: requestBody.Description,
-		DueDate:     dueDate,
-		CreatedBy:   userID,
-		Status:      status,
-	}
-
-	err = task.CreateTask(ctx.Request.Context())
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	for _, assignee := range requestBody.Assignees {
-		// Check if assignee is a member of the group before assigning
-		groupMember := &models.GroupMember{
-			GroupID: groupID,
-			UserID:  assignee,
+		var requestBody struct {
+			Title       string   `json:"title" binding:"required"`
+			Description string   `json:"description" binding:"required"`
+			DueDate     string   `json:"due_date" binding:"required"`
+			Assignees   []string `json:"assignees" binding:"required"`
 		}
-		isMember, err := groupMember.IsMember(ctx.Request.Context())
+
+		err := ctx.ShouldBindJSON(&requestBody)
 		if err != nil {
-			// Skip this assignee if there's an error checking membership
-			continue
-		}
-		if !isMember {
-			// Skip non-members - do not assign to users who are not group members
-			continue
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 
-		// Assign only if the user is a member
-		assignment := models.TaskAssignment{
-			TaskID:     task.ID,
-			UserID:     assignee,
-			AssignedBy: userID,
-		}
-		err = assignment.Save(ctx.Request.Context())
+		// Parse due_date string to time.Time
+		dueDate, err := time.Parse(time.RFC3339, requestBody.DueDate)
 		if err != nil {
-			// Skip this assignee if assignment fails (e.g., duplicate assignment)
-			continue
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid due_date format. Use RFC3339 format (e.g., 2025-12-31T23:59:59Z)"})
+			return
 		}
-	}
 
-	ctx.JSON(http.StatusCreated, gin.H{"task": task})
+		// Set status based on role: owners and admins get "active", members and viewers get "pending"
+		status := "pending"
+		if role == "owner" || role == "admin" {
+			status = "active"
+		}
+
+		task := models.Task{
+			GroupID:     groupID,
+			Title:       requestBody.Title,
+			Description: requestBody.Description,
+			DueDate:     dueDate,
+			CreatedBy:   userID,
+			Status:      status,
+		}
+
+		err = task.CreateTask(ctx.Request.Context())
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		for _, assignee := range requestBody.Assignees {
+			// Check if assignee is a member of the group before assigning
+			groupMember := &models.GroupMember{
+				GroupID: groupID,
+				UserID:  assignee,
+			}
+			isMember, err := groupMember.IsMember(ctx.Request.Context())
+			if err != nil {
+				// Skip this assignee if there's an error checking membership
+				continue
+			}
+			if !isMember {
+				// Skip non-members - do not assign to users who are not group members
+				continue
+			}
+
+			// Assign only if the user is a member
+			assignment := models.TaskAssignment{
+				TaskID:     task.ID,
+				UserID:     assignee,
+				AssignedBy: userID,
+			}
+			err = assignment.Save(ctx.Request.Context())
+			if err != nil {
+				// Skip this assignee if assignment fails (e.g., duplicate assignment)
+				continue
+			}
+		}
+
+		// Send WebSocket notification
+		username := ctx.GetString("username")
+		if username == "" {
+			username = "Someone"
+		}
+
+		messageID := uuid.New().String()
+		messageContent := username + " has created a task"
+		now := time.Now()
+
+		// Persist message to database
+		msgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		query := `INSERT INTO messages (id, room_id, user_id, username, content, created_at, updated_at) 
+		          VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		_, err = db.GetDB().Exec(msgCtx, query,
+			messageID,
+			groupID,
+			userID,
+			username,
+			messageContent,
+			now,
+			now,
+		)
+		cancel()
+
+		// Create WebSocket message
+		message := &WS.Message{
+			ID:        messageID,
+			RoomID:    groupID,
+			UserID:    userID,
+			Username:  username,
+			Content:   messageContent,
+			CreatedAt: now.Format(time.RFC3339),
+		}
+
+		// Broadcast to room if it exists (even if persistence failed)
+		if _, ok := hub.Rooms[groupID]; ok {
+			hub.Broadcast <- message
+		}
+
+		ctx.JSON(http.StatusCreated, gin.H{"task": task})
+	}
 }
 
 func GetGroupTasks(ctx *gin.Context) {
