@@ -13,7 +13,8 @@ interface GroupsResponse {
 
 export const Groups: FC = () => {
   const { user } = useUser();
-  const { groups, setGroups } = useGroups();
+  const { setGroups } = useGroups();
+  const [publicGroups, setPublicGroups] = useState<Group[]>([]);
   const { selectedGroupId, setSelectedGroupId, setActiveTab } = useSidebar();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -48,7 +49,12 @@ export const Groups: FC = () => {
         }
 
         const groupsData = data as GroupsResponse;
+        //making sure groups are only public
+        const publicGroups = groupsData.groups.filter(
+          (group) => group.type === "public"
+        );
         setGroups(groupsData.groups || []);
+        setPublicGroups(publicGroups);
         setError("");
         setHasFetched(true);
       } catch (err) {
@@ -81,16 +87,21 @@ export const Groups: FC = () => {
 
   return (
     <>
-      <CreateGroupModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <CreateGroupModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
       <div className="p-1">
-        {groups.length === 0 ? (
+        {publicGroups.length === 0 ? (
           <div className="p-4 text-center">
             <p className="text-sm text-muted-foreground mb-3">No groups yet</p>
-            <p className="text-xs text-muted-foreground">Click the + button to create a group</p>
+            <p className="text-xs text-muted-foreground">
+              Click the + button to create a group
+            </p>
           </div>
         ) : (
           <div>
-            {groups.map((group) => (
+            {publicGroups.map((group) => (
               <SidebarMenuItem key={group.id}>
                 <SidebarMenuButton
                   isActive={selectedGroupId === group.id}
@@ -100,7 +111,9 @@ export const Groups: FC = () => {
                   }}
                 >
                   <Hash className="h-4 w-4" />
-                  <span className="text-sm">{group.name.replace("-", " ")}</span>
+                  <span className="text-sm">
+                    {group.name.replace("-", " ")}
+                  </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}

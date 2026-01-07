@@ -2,7 +2,6 @@ import { FC, useState, useRef, useEffect } from "react";
 import {
   UserPlus,
   Headphones,
-  User,
   Search,
   MoreVertical,
   Plus,
@@ -19,6 +18,8 @@ import {
   Users,
   LogOut,
   Edit,
+  Phone,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/context/SidebarContext";
@@ -39,6 +40,7 @@ export const ContentHeader: FC = () => {
     setMessagesSubTab,
     groupSubTab,
     setGroupSubTab,
+    setCallType,
   } = useSidebar();
   const { groups, removeGroup } = useGroups();
   const { user } = useUser();
@@ -48,8 +50,10 @@ export const ContentHeader: FC = () => {
   const [isViewMembersModalOpen, setIsViewMembersModalOpen] = useState(false);
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isCallMenuOpen, setIsCallMenuOpen] = useState(false);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const callMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -66,15 +70,21 @@ export const ContentHeader: FC = () => {
       ) {
         setIsMoreMenuOpen(false);
       }
+      if (
+        callMenuRef.current &&
+        !callMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsCallMenuOpen(false);
+      }
     };
 
-    if (isPlusMenuOpen || isMoreMenuOpen) {
+    if (isPlusMenuOpen || isMoreMenuOpen || isCallMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [isPlusMenuOpen, isMoreMenuOpen]);
+  }, [isPlusMenuOpen, isMoreMenuOpen, isCallMenuOpen]);
 
   const handlePlusMenuAction = (action: string) => {
     setIsPlusMenuOpen(false);
@@ -189,6 +199,299 @@ export const ContentHeader: FC = () => {
   };
 
   // Render different headers based on activeTab
+  if (activeTab === "direct-messages" && selectedGroup) {
+    return (
+      <>
+        <AddTaskModal
+          isOpen={isAddTaskModalOpen}
+          onClose={() => setIsAddTaskModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <DeleteTaskModal
+          isOpen={isDeleteTaskModalOpen}
+          onClose={() => setIsDeleteTaskModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <ViewMembersModal
+          isOpen={isViewMembersModalOpen}
+          onClose={() => setIsViewMembersModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+          <div className="flex items-center gap-4">
+            <h1 className="text-lg font-semibold text-foreground">
+              {selectedGroup.name}
+            </h1>
+            <div className="flex items-center gap-1 border-l border-border pl-4">
+              <button
+                className={`px-3 py-1 text-sm font-medium transition-colors ${
+                  groupSubTab === "messages"
+                    ? "text-foreground border-b-2 border-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setGroupSubTab("messages")}
+              >
+                Messages
+              </button>
+              <button
+                className={`px-3 py-1 text-sm font-medium transition-colors ${
+                  groupSubTab === "tasks"
+                    ? "text-foreground border-b-2 border-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setGroupSubTab("tasks")}
+              >
+                Tasks
+              </button>
+              <div className="relative" ref={plusMenuRef}>
+                <button
+                  className="px-3 py-1 text-sm font-medium transition-colors flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isPlusMenuOpen && (
+                  <div className="absolute left-0 mt-2 w-56 bg-background border border-border rounded-lg shadow-lg py-1 z-50">
+                    <button
+                      onClick={() => handlePlusMenuAction("canvas")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Layout className="h-4 w-4" />
+                      <span>Canvas</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("list")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <List className="h-4 w-4" />
+                      <span>List</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("workflow")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Zap className="h-4 w-4" />
+                      <span>Workflow</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("file")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <File className="h-4 w-4" />
+                      <span>File</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("document")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Document</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("task")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                      <span>Task</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("folder")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Folder className="h-4 w-4" />
+                      <span>Folder</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("link")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                      <span>Link</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="relative" ref={moreMenuRef}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-foreground hover:text-foreground"
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+
+            {/* Dropdown Menu */}
+            {isMoreMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-lg shadow-lg py-1 z-50">
+                <button
+                  onClick={() => handleMoreMenuAction("view-members")}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>View members</span>
+                </button>
+                <div className="border-t border-border my-1"></div>
+                <button
+                  onClick={() => handleMoreMenuAction("edit-group")}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Edit group</span>
+                </button>
+                <div className="border-t border-border my-1"></div>
+                <button
+                  onClick={() => handleMoreMenuAction("leave-group")}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-accent transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Leave group</span>
+                </button>
+                {isOwner && (
+                  <>
+                    <div className="border-t border-border my-1"></div>
+                    <button
+                      onClick={() => handleMoreMenuAction("delete-group")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-accent transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Delete group</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (activeTab === "private-space" && selectedGroup) {
+    return (
+      <>
+        <AddTaskModal
+          isOpen={isAddTaskModalOpen}
+          onClose={() => setIsAddTaskModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <DeleteTaskModal
+          isOpen={isDeleteTaskModalOpen}
+          onClose={() => setIsDeleteTaskModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <ViewMembersModal
+          isOpen={isViewMembersModalOpen}
+          onClose={() => setIsViewMembersModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+          <div className="flex items-center gap-4">
+            <h1 className="text-lg font-semibold text-foreground">
+              Your personal Workspace
+            </h1>
+            <div className="flex items-center gap-1 border-l border-border pl-4">
+              <button
+                className={`px-3 py-1 text-sm font-medium transition-colors ${
+                  groupSubTab === "messages"
+                    ? "text-foreground border-b-2 border-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setGroupSubTab("messages")}
+              >
+                Messages
+              </button>
+              <button
+                className={`px-3 py-1 text-sm font-medium transition-colors ${
+                  groupSubTab === "tasks"
+                    ? "text-foreground border-b-2 border-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setGroupSubTab("tasks")}
+              >
+                Tasks
+              </button>
+              <div className="relative" ref={plusMenuRef}>
+                <button
+                  className="px-3 py-1 text-sm font-medium transition-colors flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isPlusMenuOpen && (
+                  <div className="absolute left-0 mt-2 w-56 bg-background border border-border rounded-lg shadow-lg py-1 z-50">
+                    <button
+                      onClick={() => handlePlusMenuAction("canvas")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Layout className="h-4 w-4" />
+                      <span>Canvas</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("list")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <List className="h-4 w-4" />
+                      <span>List</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("workflow")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Zap className="h-4 w-4" />
+                      <span>Workflow</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("file")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <File className="h-4 w-4" />
+                      <span>File</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("document")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Document</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("task")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                      <span>Task</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("folder")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Folder className="h-4 w-4" />
+                      <span>Folder</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("link")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                      <span>Link</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (activeTab === "groups" && selectedGroup) {
     return (
       <>
@@ -328,29 +631,44 @@ export const ContentHeader: FC = () => {
               <UserPlus className="h-4 w-4" />
               Invite teammates
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-foreground hover:text-foreground"
-            >
-              <Headphones className="h-4 w-4" />
-              Huddle
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-foreground hover:text-foreground"
-            >
-              <User className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-foreground hover:text-foreground"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
+            <div className="relative" ref={callMenuRef}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-foreground hover:text-foreground"
+                onClick={() => setIsCallMenuOpen(!isCallMenuOpen)}
+              >
+                <Headphones className="h-4 w-4" />
+                Call
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+
+              {/* Call Dropdown Menu */}
+              {isCallMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-lg shadow-lg py-1 z-50">
+                  <button
+                    onClick={() => {
+                      setIsCallMenuOpen(false);
+                      setCallType("audio");
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Phone className="h-4 w-4" />
+                    <span>Audio</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsCallMenuOpen(false);
+                      setCallType("video");
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span>Video</span>
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="relative" ref={moreMenuRef}>
               <Button
                 variant="ghost"
@@ -477,6 +795,127 @@ export const ContentHeader: FC = () => {
           </Button>
         </div>
       </div>
+    );
+  }
+
+  if (activeTab === "direct-messages" && selectedGroup) {
+    return (
+      <>
+        <AddTaskModal
+          isOpen={isAddTaskModalOpen}
+          onClose={() => setIsAddTaskModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <DeleteTaskModal
+          isOpen={isDeleteTaskModalOpen}
+          onClose={() => setIsDeleteTaskModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <ViewMembersModal
+          isOpen={isViewMembersModalOpen}
+          onClose={() => setIsViewMembersModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+          <div className="flex items-center gap-4">
+            <h1 className="text-lg font-semibold text-foreground">
+              {selectedGroup.name}
+            </h1>
+            <div className="flex items-center gap-1 border-l border-border pl-4">
+              <button
+                className={`px-3 py-1 text-sm font-medium transition-colors ${
+                  groupSubTab === "messages"
+                    ? "text-foreground border-b-2 border-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setGroupSubTab("messages")}
+              >
+                Messages
+              </button>
+              <button
+                className={`px-3 py-1 text-sm font-medium transition-colors ${
+                  groupSubTab === "tasks"
+                    ? "text-foreground border-b-2 border-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setGroupSubTab("tasks")}
+              >
+                Tasks
+              </button>
+              <div className="relative" ref={plusMenuRef}>
+                <button
+                  className="px-3 py-1 text-sm font-medium transition-colors flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isPlusMenuOpen && (
+                  <div className="absolute left-0 mt-2 w-56 bg-background border border-border rounded-lg shadow-lg py-1 z-50">
+                    <button
+                      onClick={() => handlePlusMenuAction("canvas")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Layout className="h-4 w-4" />
+                      <span>Canvas</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("list")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <List className="h-4 w-4" />
+                      <span>List</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("workflow")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Zap className="h-4 w-4" />
+                      <span>Workflow</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("file")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <File className="h-4 w-4" />
+                      <span>File</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("document")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Document</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("task")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                      <span>Task</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("folder")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Folder className="h-4 w-4" />
+                      <span>Folder</span>
+                    </button>
+                    <button
+                      onClick={() => handlePlusMenuAction("link")}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                      <span>Link</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
