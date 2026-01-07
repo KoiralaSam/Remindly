@@ -49,9 +49,12 @@ func main() {
 
 	server := gin.Default()
 	hub := WS.NewHub()
+	signalingHub := WS.NewSignalingHub()
 	wsHandler := handlers.NewHandler(hub)
+	signalingHandler := handlers.NewSignalingHandler(signalingHub)
 
 	go hub.Run()
+	go signalingHub.Run()
 
 	// Configure CORS middleware
 	server.Use(cors.New(cors.Config{
@@ -63,7 +66,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	routes.SetupRoutes(server, wsHandler)
+	routes.SetupRoutes(server, wsHandler, signalingHandler)
 
 	err = server.Run(":8080")
 	if err != nil {

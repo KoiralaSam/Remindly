@@ -6,19 +6,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler) {
+func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler, signalingHandler *handlers.SignalingHandler) {
 	// Authentication Routes
 	server.POST("/api/auth/register", handlers.RegisterUser)
 	server.POST("/api/auth/login", handlers.Login)
 
 	authenticated := server.Group("/api")
-	authenticated.Use(middleware.AuthMiddleware)
+	authenticated.Use(middleware.AuthMiddleware())
 
 	authenticated.GET("/logout", handlers.Logout)
 
 	// User Routes
 	authenticated.GET("/users/me", handlers.GetUser)
 	authenticated.PATCH("/users/me", handlers.UpdateUser)
+	authenticated.GET("/users/from-my-groups", handlers.GetUsersFromMyGroups)
 
 	// Group Routes
 	authenticated.POST("/groups", handlers.CreateGroup(wsHandler))
@@ -27,12 +28,15 @@ func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler) {
 	authenticatedGroupMember := authenticated.Group("/groups/:groupID")
 	authenticatedGroupMember.Use(middleware.AuthGroupMemberMiddleware)
 
+	// NEW: Signaling WebSocket (separate channel) - must be after group member middleware
+	authenticatedGroupMember.GET("/ws/signaling/:roomId", signalingHandler.JoinSignaling)
+
 	//websocket routes
 	authenticatedGroupMember.POST("/ws/createRoom", wsHandler.CreateRoom)
 	authenticatedGroupMember.GET("/ws/joinRoom/:roomId", wsHandler.JoinRoom)
 	authenticatedGroupMember.GET("/ws/rooms", wsHandler.GetRooms)
 	authenticatedGroupMember.GET("/ws/rooms/clients", wsHandler.GetClients)
-	authenticatedGroupMember.POST("/ws/rooms/:roomId/messages", handlers.CreateMessage)
+	authenticatedGroupMember.POST("/ws/rooms/:roomId/messages", handlers.CreateMessage(wsHandler.GetHub()))
 	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages", handlers.GetRoomMessages)
 	authenticatedGroupMember.GET("/ws/rooms/:roomId/messages/:userId", handlers.GetUserRoomMessages)
 	authenticatedGroupMember.DELETE("/ws/messages/:messageId", handlers.DeleteMessage)
