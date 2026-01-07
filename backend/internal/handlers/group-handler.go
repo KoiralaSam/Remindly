@@ -8,51 +8,48 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CreateGroup(wsHandler *WShandler) func(*gin.Context) {
+func CreateGroup(wsHandler *WShandler) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var group models.Group
 		createdByUserId := ctx.GetString("userID")
 
-		err := ctx.ShouldBindJSON(&group)
-		if err != nil {
+		if err := ctx.ShouldBindJSON(&group); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{
-				"error": "Couldnot parse request data!",
+				"error": "Could not parse request data",
 			})
 			return
 		}
 
 		group.CreatedBy = createdByUserId
-		err = group.Create()
-		if err != nil {
+		if err := group.Create(); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Couldnot create group!",
+				"error": "Could not create group",
 			})
 			return
 		}
 
-		// Automatically add the creator as an owner member
+		// Add creator as owner
 		groupMember := &models.GroupMember{
 			GroupID: group.ID,
 			UserID:  createdByUserId,
 			Role:    "owner",
 		}
-		err = groupMember.Save()
-		if err != nil {
+		if err := groupMember.Save(); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Group created but failed to add creator as member!",
+				"error": "Group created but failed to add creator as member",
 			})
 			return
 		}
 
-		// Automatically create a room for the group
-		wsHandler.hub.Rooms[group.ID] = &WS.Room{
+		// ✅ SAFE room creation via hub
+		wsHandler.hub.CreateRoom <- &WS.Room{
 			ID:      group.ID,
 			Name:    group.Name,
 			Clients: make(map[string]*WS.Client),
 		}
 
 		ctx.JSON(http.StatusCreated, gin.H{
-			"message": "Group created successfully!",
+			"message": "Group created successfully",
 			"group":   group,
 		})
 	}

@@ -59,7 +59,8 @@ func (gi *GroupInvitation) Save(ctx context.Context) error {
 func (gi *GroupInvitation) GetByID(ctx context.Context) error {
 	query := `SELECT id, group_id, inviter_id, invitee_email, invitee_id, role, status, expires_at, created_at, updated_at 
 	          FROM group_invitations 
-	          WHERE id = $1`
+	          WHERE id = $1
+			  ORDER BY created_at DESC`
 
 	var inviteeID *string
 	var expiresAt *time.Time

@@ -1,10 +1,18 @@
 -- +goose Up
 -- +goose StatementBegin
--- Create enum type for group types
-CREATE TYPE group_type AS ENUM ('private', 'direct', 'public');
+-- Create enum type for group types (if it doesn't exist)
+DO $$ BEGIN
+    CREATE TYPE group_type AS ENUM ('private', 'direct', 'public');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- Add type column to groups table with default 'private'
-ALTER TABLE groups ADD COLUMN type group_type NULL;
+-- Add type column to groups table (if it doesn't exist)
+DO $$ BEGIN
+    ALTER TABLE groups ADD COLUMN type group_type NULL;
+EXCEPTION
+    WHEN duplicate_column THEN null;
+END $$;
 
 -- Function to update group type based on member count (only if type is NULL)
 CREATE OR REPLACE FUNCTION update_group_type()
@@ -40,13 +48,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger to update group type when members are added
+-- Create trigger to update group type when members are added (if it doesn't exist)
+DROP TRIGGER IF EXISTS update_group_type_on_member_insert ON group_members;
 CREATE TRIGGER update_group_type_on_member_insert
 AFTER INSERT ON group_members
 FOR EACH ROW
 EXECUTE FUNCTION update_group_type();
 
--- Create trigger to update group type when members are removed
+-- Create trigger to update group type when members are removed (if it doesn't exist)
+DROP TRIGGER IF EXISTS update_group_type_on_member_delete ON group_members;
 CREATE TRIGGER update_group_type_on_member_delete
 AFTER DELETE ON group_members
 FOR EACH ROW

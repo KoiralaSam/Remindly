@@ -93,6 +93,49 @@ func (gm *GroupMember) GetByUserID() ([]GroupMember, error) {
 	return groupMembers, nil
 }
 
+// GetUsersFromUserGroups returns all unique users from groups that the specified user is a member of
+func GetUsersFromUserGroups(ctx context.Context, userID string) ([]struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}, error) {
+	query := `SELECT DISTINCT u.id, u.name, u.email
+	          FROM users u
+	          INNER JOIN group_members gm ON u.id = gm.user_id
+	          WHERE gm.group_id IN (
+	              SELECT group_id FROM group_members WHERE user_id = $1
+	          )
+	          AND u.id != $1
+	          ORDER BY u.name`
+
+	rows, err := db.GetDB().Query(ctx, query, userID)
+	if err != nil {
+		return nil, errors.New("failed to get users from user groups: " + err.Error())
+	}
+	defer rows.Close()
+
+	users := []struct {
+		ID    string `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}{}
+
+	for rows.Next() {
+		var user struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Email string `json:"email"`
+		}
+		err := rows.Scan(&user.ID, &user.Name, &user.Email)
+		if err != nil {
+			return nil, errors.New("failed to scan user: " + err.Error())
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
 func (gm *GroupMember) UpdateRole(role string) error {
 	query := `UPDATE group_members SET role = $1 WHERE group_id = $2 AND user_id = $3`
 	_, err := db.GetDB().Exec(context.Background(), query, role, gm.GroupID, gm.UserID)

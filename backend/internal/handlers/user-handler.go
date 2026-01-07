@@ -2,11 +2,25 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
 	"github.com/KoiralaSam/Remindly/backend/internal/utils"
 	"github.com/gin-gonic/gin"
 )
+
+// getUserInitials extracts initials from a user's name
+func getUserInitials(name string) string {
+	parts := strings.Fields(name)
+	if len(parts) == 0 {
+		return ""
+	}
+	if len(parts) == 1 {
+		return strings.ToUpper(parts[0][:1])
+	}
+	// Return first letter of first name and first letter of last name
+	return strings.ToUpper(parts[0][:1] + parts[len(parts)-1][:1])
+}
 
 func RegisterUser(ctx *gin.Context) {
 	user := &models.User{}
@@ -23,6 +37,34 @@ func RegisterUser(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Create a private group for the user
+	initials := getUserInitials(user.Name)
+	groupName := user.Name
+	if initials != "" {
+		groupName = strings.Split(user.Name, " ")[0] + "'s private space"
+	}
+
+	privateGroup := &models.Group{
+		Name:        groupName,
+		Description: "Personal workspace",
+		Type:        "private",
+		CreatedBy:   user.ID,
+	}
+	err = privateGroup.Create()
+	if err != nil {
+		// Log error but don't fail registration
+		// You might want to log this error properly
+		_ = err
+	} else {
+		// Add user as owner of their private group
+		groupMember := &models.GroupMember{
+			GroupID: privateGroup.ID,
+			UserID:  user.ID,
+			Role:    "owner",
+		}
+		_ = groupMember.Save() // Ignore error, continue with registration
 	}
 
 	auth := &models.Auth{
@@ -169,4 +211,16 @@ func UpdateUser(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"id": user.ID, "name": user.Name, "email": user.Email, "phone": user.Phone, "updated_at": user.UpdatedAt})
+}
+
+func GetUsersFromMyGroups(ctx *gin.Context) {
+	userID := ctx.GetString("userID")
+
+	users, err := models.GetUsersFromUserGroups(ctx.Request.Context(), userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"users": users})
 }
