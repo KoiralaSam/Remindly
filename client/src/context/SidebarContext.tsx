@@ -6,10 +6,19 @@ export type SidebarTab =
   | "groups"
   | "direct-messages"
   | "apps"
+  | "private-space"
   | null;
 
 export type MessagesSubTab = "messages" | "invitations";
 export type GroupSubTab = "messages" | "tasks";
+export type CallType = "audio" | "video" | null;
+
+export interface IncomingCall {
+  callerId: string;
+  callerName: string;
+  callType: "audio" | "video";
+  groupId: string;
+}
 
 interface SidebarContextType {
   activeTab: SidebarTab;
@@ -22,6 +31,10 @@ interface SidebarContextType {
   setMessagesSubTab: (tab: MessagesSubTab) => void;
   groupSubTab: GroupSubTab;
   setGroupSubTab: (tab: GroupSubTab) => void;
+  callType: CallType;
+  setCallType: (type: CallType) => void;
+  incomingCall: IncomingCall | null;
+  setIncomingCall: (call: IncomingCall | null) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -47,6 +60,8 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
   const [messagesSubTab, setMessagesSubTab] =
     useState<MessagesSubTab>("messages");
   const [groupSubTab, setGroupSubTab] = useState<GroupSubTab>("messages");
+  const [callType, setCallType] = useState<CallType>(null);
+  const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
 
   return (
     <SidebarContext.Provider
@@ -61,6 +76,10 @@ export const SidebarProvider: React.FC<SidebarProviderProps> = ({
         setMessagesSubTab,
         groupSubTab,
         setGroupSubTab,
+        callType,
+        setCallType,
+        incomingCall,
+        setIncomingCall,
       }}
     >
       {children}
