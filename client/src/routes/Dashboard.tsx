@@ -22,21 +22,24 @@ import {
   Edit,
   Zap,
   Folder,
-  Star,
   MessageCircle,
   UserPlus,
   ChevronDown,
   Plus,
 } from "lucide-react";
 import { Groups } from "@/components/groups/GroupList";
+import { DirectMessagesList } from "@/components/messages/DirectMessagesList";
 import { SearchBar } from "@/components/common/SearchBar";
 import { MainContent } from "@/components/layout/MainContent";
-import { useSidebar } from "@/context/SidebarContext";
 import { useUser } from "@/context/UserContext";
+import { useGroups } from "@/context/GroupContext";
+import { useSidebar } from "@/context/SidebarContext";
 
 export default function Dashboard() {
-  const { activeTab, setActiveTab } = useSidebar();
+  const { activeTab, setActiveTab, setSelectedGroupId, callType } =
+    useSidebar();
   const { user } = useUser();
+  const { groups } = useGroups();
   const [expandedSections, setExpandedSections] = useState({
     groups: true,
     directMessages: true,
@@ -132,20 +135,46 @@ export default function Dashboard() {
 
             <SidebarSeparator />
 
-            {/* Starred */}
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-2 py-1.5">
-                <Star className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider">
-                  STARRED
-                </span>
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="px-2 py-2 text-xs text-sidebar-foreground/50">
-                  Drag and drop important stuff here
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {/* User's Private Group */}
+            {(() => {
+              const privateGroup = groups.find((g) => g.type === "private");
+              const getUserInitials = (name: string) => {
+                const parts = name.split(" ");
+                if (parts.length === 0) return "";
+                if (parts.length === 1) return parts[0][0].toUpperCase();
+                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+              };
+
+              return privateGroup ? (
+                <SidebarGroup>
+                  <SidebarGroupLabel className="px-2 py-1.5">
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60 group-hover:text-sidebar-foreground">
+                      Private
+                    </span>
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          isActive={activeTab === "private-space"}
+                          onClick={() => {
+                            setSelectedGroupId(privateGroup.id);
+                            setActiveTab("private-space");
+                          }}
+                        >
+                          <div className="flex aspect-square size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
+                            <span className="text-xs font-medium">
+                              {getUserInitials(user?.name || "")}
+                            </span>
+                          </div>
+                          <span className="text-sm">{privateGroup.name}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ) : null;
+            })()}
 
             <SidebarSeparator />
 
@@ -188,14 +217,19 @@ export default function Dashboard() {
             </SidebarGroup>
 
             <SidebarSeparator />
-
-            {/* Direct Messages */}
             <SidebarGroup>
               <SidebarGroupLabel>
                 <button
                   onClick={() => {
+                    const directGroups = groups.filter(
+                      (g) => g.type === "direct"
+                    );
                     toggleSection("directMessages");
                     setActiveTab("direct-messages");
+                    // If no direct messages, clear selectedGroupId to show composition area
+                    if (directGroups.length === 0) {
+                      setSelectedGroupId(null);
+                    }
                   }}
                   className="flex items-center gap-1.5 w-full px-2 py-1.5 hover:bg-sidebar-accent rounded-md transition-colors group"
                 >
@@ -208,31 +242,26 @@ export default function Dashboard() {
                     DIRECT MESSAGES
                   </span>
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveTab("direct-messages");
+                    setSelectedGroupId(null);
+                  }}
+                  className="p-1 hover:bg-sidebar-accent rounded text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+                  aria-label="Create direct message"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
               </SidebarGroupLabel>
-              {expandedSections.directMessages && (
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        isActive={activeTab === "direct-messages"}
-                        onClick={() => setActiveTab("direct-messages")}
-                      >
-                        <div className="flex aspect-square size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
-                          <span className="text-xs font-medium">
-                            {user?.name?.split(" ")[0].charAt(0)}
-                            {user?.name?.split(" ")[1].charAt(0)}
-                          </span>
-                        </div>
-                        <span className="text-sm">{user?.name}</span>
-                        <span className="ml-auto text-xs text-sidebar-foreground/50">
-                          you
-                        </span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              )}
             </SidebarGroup>
+            {/* Direct Messages */}
+            {expandedSections.directMessages && (
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <DirectMessagesList />
+                </SidebarMenu>
+              </SidebarGroupContent>
+            )}
 
             <SidebarSeparator />
 

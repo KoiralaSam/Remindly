@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -9,49 +10,64 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware(ctx *gin.Context) {
-	token := ctx.GetHeader("Authorization")
-	if token == "" {
-		// For WebSocket handshakes, allow JWT via Sec-WebSocket-Protocol
-		token = ctx.GetHeader("Sec-WebSocket-Protocol")
+// In your auth middleware file
+func AuthMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var token string
+
+		// Try to get token from Authorization header first
+		authHeader := ctx.GetHeader("Authorization")
+		if authHeader != "" {
+			// Bearer token format
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				token = strings.TrimPrefix(authHeader, "Bearer ")
+			} else {
+				token = authHeader
+			}
+		}
+
+		// If no token in header, check query parameters (for WebSocket connections)
+		if token == "" {
+			token = ctx.Query("token")
+		}
+
+		// If still no token, check cookies
+		if token == "" {
+			tokenCookie, err := ctx.Cookie("token")
+			if err == nil {
+				token = tokenCookie
+			}
+		}
+
+		if token == "" {
+			log.Printf("No token found in request from %s", ctx.Request.RemoteAddr)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization token required"})
+			return
+		}
+
+		// Validate the token and extract user info
+		claims, err := utils.VerifyToken(token) // Your JWT validation function
+		if err != nil {
+			log.Printf("Token validation failed: %v", err)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			return
+		}
+		user := &models.User{ID: claims.UserID}
+
+		err = user.Get()
+		if err != nil {
+			log.Printf("Error getting user: %v", err)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			return
+		}
+
+		// Set user info in context
+		ctx.Set("userID", claims.UserID)
+		ctx.Set("username", user.Name)
+		ctx.Set("email", user.Email) // if you have it
+
+		log.Printf("Auth successful for user: %s (%s)", user.Name, claims.UserID)
+
+		ctx.Next()
 	}
-
-	if token == "" {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	// Remove "Bearer " prefix if present
-	token = strings.TrimPrefix(token, "Bearer ")
-	token = strings.TrimSpace(token)
-
-	if token == "" {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	authDetails, err := utils.VerifyToken(token)
-
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized_token_unverified"})
-		return
-	}
-
-	auth, err := models.FetchAuth(authDetails)
-
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	if auth == nil {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	ctx.Set("userID", auth.UserID)
-	ctx.Set("authUUID", auth.AuthUUID)
-	ctx.Set("token", token)
-
-	ctx.Next()
 }

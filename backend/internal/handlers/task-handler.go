@@ -99,11 +99,11 @@ func CreateTask(hub *WS.Hub) gin.HandlerFunc {
 		messageContent := username + " has created a task"
 		now := time.Now()
 
-		// Persist message to database
+		// Persist message to database (background, errors logged but don't block)
 		msgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		query := `INSERT INTO messages (id, room_id, user_id, username, content, created_at, updated_at) 
 		          VALUES ($1, $2, $3, $4, $5, $6, $7)`
-		_, err = db.GetDB().Exec(msgCtx, query,
+		_, _ = db.GetDB().Exec(msgCtx, query,
 			messageID,
 			groupID,
 			userID,

@@ -18,7 +18,7 @@ type Message struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// Save persists a message to the database
+// Save persists a message to the database (ID is auto-generated)
 func (m *Message) Save(ctx context.Context) error {
 
 	query := `INSERT INTO messages (room_id, user_id, username, content) 
@@ -31,6 +31,28 @@ func (m *Message) Save(ctx context.Context) error {
 		m.Username,
 		m.Content,
 	).Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt)
+
+	if err != nil {
+		return errors.New("failed to save message: " + err.Error())
+	}
+
+	return nil
+}
+
+// SaveWithID persists a message to the database with a pre-generated ID
+func (m *Message) SaveWithID(ctx context.Context) error {
+	query := `INSERT INTO messages (id, room_id, user_id, username, content, created_at, updated_at) 
+	          VALUES ($1, $2, $3, $4, $5, $6, $7)`
+
+	_, err := db.GetDB().Exec(ctx, query,
+		m.ID,
+		m.RoomID,
+		m.UserID,
+		m.Username,
+		m.Content,
+		m.CreatedAt,
+		m.UpdatedAt,
+	)
 
 	if err != nil {
 		return errors.New("failed to save message: " + err.Error())

@@ -11,6 +11,8 @@ import { InvitationProvider } from "./context/InvitationContext";
 import { MessageProvider } from "./context/MessageContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { WebSocketProvider } from "./context/WebSocketContext";
+import { SignalingProvider } from "./context/SignalingContext";
 import Homepage from "./routes/Homepage";
 import Dashboard from "./routes/Dashboard";
 import "./App.css";
@@ -23,15 +25,22 @@ function App() {
           <GroupMemberProvider>
             <InvitationProvider>
               <MessageProvider>
-                <SidebarProvider>
-                  <Router>
-                    <Routes>
-                      <Route path="/" element={<Homepage />} />
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                  </Router>
-                </SidebarProvider>
+                <WebSocketProvider>
+                  <SignalingProvider>
+                    <SidebarProvider>
+                      <Router>
+                        <Routes>
+                          <Route path="/" element={<Homepage />} />
+                          <Route path="/dashboard" element={<Dashboard />} />
+                          <Route
+                            path="*"
+                            element={<Navigate to="/" replace />}
+                          />
+                        </Routes>
+                      </Router>
+                    </SidebarProvider>
+                  </SignalingProvider>
+                </WebSocketProvider>
               </MessageProvider>
             </InvitationProvider>
           </GroupMemberProvider>

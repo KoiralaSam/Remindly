@@ -48,6 +48,7 @@ export const CreateGroupModal: FC<CreateGroupModalProps> = ({
         body: JSON.stringify({
           name: groupName,
           description: groupDescription,
+          type: "public",
         }),
       });
 

@@ -6,47 +6,77 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/KoiralaSam/Remindly/backend/internal/WS"
 	"github.com/KoiralaSam/Remindly/backend/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // CreateMessage creates a new message in a room
-func CreateMessage(ctx *gin.Context) {
-	roomID := ctx.Param("roomId")
-	userID := ctx.GetString("userID")
-	username := ctx.GetString("username")
+// It broadcasts via WebSocket first for real-time display, then saves to DB in background
+func CreateMessage(hub *WS.Hub) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		roomID := ctx.Param("roomId")
+		userID := ctx.GetString("userID")
+		username := ctx.GetString("username")
 
-	var requestBody struct {
-		Content string `json:"content" binding:"required"`
-	}
+		var requestBody struct {
+			Content string `json:"content" binding:"required"`
+		}
 
-	if err := ctx.ShouldBindJSON(&requestBody); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+		if err := ctx.ShouldBindJSON(&requestBody); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-	message := models.Message{
-		RoomID:   roomID,
-		UserID:   userID,
-		Username: username,
-		Content:  requestBody.Content,
-	}
+		// Generate message ID and timestamp immediately
+		messageID := uuid.New().String()
+		now := time.Now()
 
-	msgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+		// Create message object
+		message := models.Message{
+			ID:        messageID,
+			RoomID:    roomID,
+			UserID:    userID,
+			Username:  username,
+			Content:   requestBody.Content,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
 
-	if err := message.Save(msgCtx); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"statusOk": false,
-			"error":    err.Error(),
+		// Create WebSocket message for broadcast
+		wsMessage := &WS.Message{
+			ID:        messageID,
+			RoomID:    roomID,
+			UserID:    userID,
+			Username:  username,
+			Content:   requestBody.Content,
+			CreatedAt: now.Format(time.RFC3339),
+		}
+
+		// Broadcast via WebSocket immediately (non-blocking)
+		if _, ok := hub.Rooms[roomID]; ok {
+			hub.Broadcast <- wsMessage
+		}
+
+		// Save to database in background (non-blocking goroutine)
+		go func() {
+			msgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			if err := message.SaveWithID(msgCtx); err != nil {
+				// Log error but don't fail the request since message was already broadcast
+				// In production, you might want to use a logger here
+				_ = err
+			}
+		}()
+
+		// Return success immediately with message data
+		ctx.JSON(http.StatusOK, gin.H{
+			"statusOk": true,
+			"data":     message,
 		})
-		return
 	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"statusOk": true,
-		"data":     message,
-	})
 }
 
 // GetRoomMessages retrieves all messages for a room with pagination

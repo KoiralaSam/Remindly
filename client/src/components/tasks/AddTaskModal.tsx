@@ -88,16 +88,32 @@ export const AddTaskModal: FC<AddTaskModalProps> = ({
         },
         body: JSON.stringify(taskData),
       });
+      console.log(response);
 
-      const data = await response.json();
-
+      // Check response status
       if (!response.ok) {
-        setError((data as { error?: string }).error || "Failed to create task");
-        setLoading(false);
+        let errorMessage = "Failed to create task";
+        try {
+          const errorData = await response.json();
+          errorMessage =
+            (errorData as { error?: string }).error || errorMessage;
+        } catch {
+          // If response is not JSON, use default error message
+        }
+        setError(errorMessage);
         return;
       }
 
-      setSuccess(true);
+      // Parse response (backend returns 201 with task object)
+      // We don't need the response data, but we parse it to ensure the request completed
+      try {
+        await response.json();
+      } catch (parseError) {
+        // If JSON parsing fails, still consider it a success (task was created)
+        console.error("Failed to parse response:", parseError);
+      }
+
+      // Task created successfully - reset form and show success
       setTitle("");
       setDescription("");
       setDueDate("");
@@ -105,15 +121,20 @@ export const AddTaskModal: FC<AddTaskModalProps> = ({
       setFolderName("");
       setIsNewFolder(false);
       setAssignees([]);
-      setLoading(false);
+      setSuccess(true);
 
       // Close modal after a short delay
       setTimeout(() => {
-        onClose();
         setSuccess(false);
+        onClose();
       }, 1000);
     } catch (err) {
-      setError("Network error. Please try again.");
+      console.error("Error creating task:", err);
+      setError(
+        err instanceof Error ? err.message : "Network error. Please try again."
+      );
+    } finally {
+      // Always reset loading state
       setLoading(false);
     }
   };

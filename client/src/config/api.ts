@@ -25,6 +25,7 @@ export const apiConfig = {
   },
   users: {
     me: `${API_BASE_URL}/api/users/me`,
+    fromMyGroups: `${API_BASE_URL}/api/users/from-my-groups`,
   },
   tasks: {
     user: `${API_BASE_URL}/api/tasks/user`,
@@ -51,5 +52,14 @@ export const apiConfig = {
       `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/rooms/${groupId}/messages/${userId}`,
     deleteMessage: (groupId: string, messageId: string) =>
       `${API_BASE_URL}${API_GROUP_URL}/${groupId}/ws/messages/${messageId}`,
+  },
+  signaling: {
+    ws: (groupId: string, roomId?: string) => {
+      const protocol = API_BASE_URL.startsWith("https") ? "wss" : "ws";
+      const host = API_BASE_URL.replace(/^https?:\/\//, "");
+      // Use groupId as roomId if roomId not provided (they're the same in our case)
+      const finalRoomId = roomId || groupId;
+      return `${protocol}://${host}/api/groups/${groupId}/ws/signaling/${finalRoomId}`;
+    },
   },
 };
