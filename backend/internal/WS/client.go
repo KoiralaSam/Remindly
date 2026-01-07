@@ -2,10 +2,9 @@ package WS
 
 import (
 	"context"
-	"log"
 	"time"
 
-	"github.com/KoiralaSam/Remindly/backend/internal/db"
+	"github.com/KoiralaSam/Remindly/backend/internal/models"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -30,72 +29,94 @@ type Message struct {
 func (c *Client) WriteMessage() {
 	defer c.Conn.Close()
 
+	// Set up ping ticker to keep connection alive
+	ticker := time.NewTicker(54 * time.Second)
+	defer ticker.Stop()
+
 	for {
-		message, ok := <-c.Message
-		if !ok {
-			return
+		select {
+		case message, ok := <-c.Message:
+			// Set write deadline
+			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if !ok {
+				// Channel closed
+				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			if err := c.Conn.WriteJSON(message); err != nil {
+				// Connection closed or broken - exit gracefully
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					// Error writing message
+				}
+				return
+			}
+		case <-ticker.C:
+			// Send ping to keep connection alive
+			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				// Connection closed or broken - exit gracefully without logging as error
+				// This is expected when client disconnects
+				return
+			}
 		}
-		c.Conn.WriteJSON(message)
 	}
 }
 
 func (c *Client) ReadMessage(h *Hub) {
-
 	defer func() {
 		h.UnRegister <- c
 		c.Conn.Close()
 	}()
 
+	// Set up pong handler to respond to ping messages
+	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.Conn.SetPongHandler(func(string) error {
+		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	for {
 		_, m, err := c.Conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseGoingAway) {
+				// WebSocket read error
 			}
 			break
 		}
 
-		msg := &Message{
-			ID:       uuid.New().String(),
-			RoomID:   c.RoomID,
-			UserID:   c.ID,
-			Content:  string(m),
-			Username: c.Username,
+		// Reset read deadline after successful read
+		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+		now := time.Now()
+		msg := &models.Message{
+			ID:        uuid.New().String(),
+			RoomID:    c.RoomID,
+			UserID:    c.ID,
+			Content:   string(m),
+			Username:  c.Username,
+			CreatedAt: now,
+			UpdatedAt: now,
 		}
 
 		// Persist message to database
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		err = persistMessage(ctx, msg)
+		err = msg.SaveWithID(ctx)
 		cancel()
 		if err != nil {
-			log.Printf("failed to persist message: %v", err)
 			// Still broadcast even if persistence fails
 		}
 
-		msg.CreatedAt = time.Now().Format(time.RFC3339)
-		h.Broadcast <- msg
+		// Convert to WS.Message for broadcasting (CreatedAt as string)
+		wsMsg := &Message{
+			ID:        msg.ID,
+			RoomID:    msg.RoomID,
+			UserID:    msg.UserID,
+			Content:   msg.Content,
+			Username:  msg.Username,
+			CreatedAt: msg.CreatedAt.Format(time.RFC3339),
+		}
+
+		h.Broadcast <- wsMsg
 	}
-
-}
-
-// persistMessage saves the message to the database
-func persistMessage(ctx context.Context, msg *Message) error {
-	query := `INSERT INTO messages (id, room_id, user_id, username, content, created_at, updated_at) 
-	          VALUES ($1, $2, $3, $4, $5, $6, $7)`
-
-	_, err := db.GetDB().Exec(ctx, query,
-		msg.ID,
-		msg.RoomID,
-		msg.UserID,
-		msg.Username,
-		msg.Content,
-		time.Now(),
-		time.Now(),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

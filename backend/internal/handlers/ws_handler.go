@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/WS"
@@ -50,8 +51,9 @@ func (h *WShandler) CreateRoom(ctx *gin.Context) {
 }
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:   1024,
+	WriteBufferSize:  1024,
+	HandshakeTimeout: 10 * time.Second,
 	CheckOrigin: func(r *http.Request) bool {
 		// In development, accept WebSocket connections from any origin.
 		// If you want to restrict this, compare r.Header.Get("Origin")
@@ -65,16 +67,24 @@ var upgrader = websocket.Upgrader{
 func (h *WShandler) JoinRoom(ctx *gin.Context) {
 	defer func() {
 		if r := recover(); r != nil {
+			debug.PrintStack()
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 	}()
 
 	roomID := ctx.Param("roomId")
 	groupID := ctx.Param("groupID")
+
 	clientID := ctx.GetString("userID")
+	username := ctx.GetString("username")
 
 	if clientID == "" {
-		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user ID not found"})
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user ID not found - authentication required"})
+		return
+	}
+
+	if username == "" {
+		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "username not found"})
 		return
 	}
 
@@ -82,13 +92,6 @@ func (h *WShandler) JoinRoom(ctx *gin.Context) {
 	group, err := models.GetGroupByID(groupID)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "group not found"})
-		return
-	}
-
-	// Username is already set by middleware
-	username := ctx.GetString("username")
-	if username == "" {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "username not found"})
 		return
 	}
 
@@ -101,19 +104,13 @@ func (h *WShandler) JoinRoom(ctx *gin.Context) {
 		}
 	}
 
-	// Get the protocol from request (token passed as protocol)
-	requestedProtocol := ctx.GetHeader("Sec-WebSocket-Protocol")
-	var responseHeader http.Header
-	if requestedProtocol != "" {
-		responseHeader = make(http.Header)
-		responseHeader.Set("Sec-WebSocket-Protocol", requestedProtocol)
-	}
-
-	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, responseHeader)
+	// Upgrade to WebSocket
+	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		return
 	}
 
+	// Create client
 	cl := &WS.Client{
 		Conn:     conn,
 		ID:       clientID,
@@ -122,6 +119,7 @@ func (h *WShandler) JoinRoom(ctx *gin.Context) {
 		Message:  make(chan *WS.Message, 10),
 	}
 
+	// Create join message
 	m := &WS.Message{
 		ID:        uuid.New().String(),
 		RoomID:    roomID,
@@ -131,14 +129,16 @@ func (h *WShandler) JoinRoom(ctx *gin.Context) {
 		CreatedAt: time.Now().Format(time.RFC3339),
 	}
 
-	//Register a new client through the register channel
+	// Register a new client through the register channel
 	h.hub.Register <- cl
-	//broadcast that message
+
+	// Broadcast that message
 	h.hub.Broadcast <- m
 
-	//write Message (runs in separate goroutine)
+	// Start write goroutine
 	go cl.WriteMessage()
-	//read message (blocks until connection closes)
+
+	// Start read loop (blocks until connection closes)
 	cl.ReadMessage(h.hub)
 }
 
