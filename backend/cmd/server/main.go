@@ -22,14 +22,12 @@ import (
 func main() {
 	//connect to database
 	// Try .env in current directory first (Docker), then relative path (local dev)
-	var envErr error
+	// In App Platform, environment variables are injected directly, so .env is optional
 	if err := godotenv.Load(".env"); err != nil {
 		if err := godotenv.Load("../../.env"); err != nil {
-			envErr = err
+			// .env file not found - this is OK in App Platform where env vars are injected
+			log.Printf("Note: .env file not found, using environment variables from system")
 		}
-	}
-	if envErr != nil {
-		log.Fatalf("Error loading .env file: %v", envErr)
 	}
 
 	DB_URL := os.Getenv("DATABASE_URL")
