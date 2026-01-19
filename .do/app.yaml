@@ -97,7 +97,5 @@ services:
       success_threshold: 1
       failure_threshold: 3
     envs:
-      # Use empty string for relative URLs - frontend and backend share same domain
-      - key: VITE_API_BASE_URL
-        scope: RUN_AND_BUILD_TIME
-        value: ""
+      # VITE_API_BASE_URL is auto-detected: empty string in production, localhost:8080 in dev
+      # No need to set it explicitly - frontend code detects production from hostname

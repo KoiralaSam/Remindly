@@ -1,10 +1,21 @@
 // API Configuration
-// Handle empty string for relative URLs (App Platform uses same domain for frontend/backend)
+// In production (App Platform), frontend and backend share the same domain, so use relative URLs
+// In development, use localhost:8080
 const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const isProduction =
+  typeof window !== "undefined" &&
+  window.location.hostname !== "localhost" &&
+  window.location.hostname !== "127.0.0.1";
+
 const API_BASE_URL =
-  VITE_API_BASE_URL !== undefined
-    ? VITE_API_BASE_URL // Use provided value (even if empty string for relative URLs)
-    : "http://localhost:8080"; // Default for local development
+  // If explicitly set (even if empty string), use it
+  VITE_API_BASE_URL !== undefined && VITE_API_BASE_URL !== null
+    ? VITE_API_BASE_URL
+    : // If in production (not localhost), use relative URLs (empty string)
+    isProduction
+    ? ""
+    : // Default for local development
+      "http://localhost:8080";
 const API_AUTH_URL = import.meta.env.VITE_API_AUTH_URL || "/api/auth";
 const API_GROUP_URL = import.meta.env.VITE_API_GROUP_URL || "/api/groups";
 
