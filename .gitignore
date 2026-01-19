@@ -27,5 +27,6 @@ api-test
 
 # But allow documentation and deployment guides
 !.github/
-!DEPLOYMENT.md
-!GITHUB_DEPLOYMENT.md
+!.do/
+.pub
+droplet

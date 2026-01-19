@@ -1,0 +1,85 @@
+name: remindly
+region: nyc
+
+# Backend Service
+services:
+  - name: backend
+    source_dir: backend
+    github:
+      repo: KoiralaSam/Remindly
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /api
+    health_check:
+      http_path: /api/users/me
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: CORS_ORIGINS
+        scope: RUN_TIME
+        type: SECRET
+      - key: APP_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: SENDGRID_EMAIL_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SENDGRID_FROM_EMAIL
+        scope: RUN_TIME
+        type: SECRET
+      - key: SENDGRID_FROM_NAME
+        scope: RUN_TIME
+        type: SECRET
+      - key: AWS_ACCESS_KEY_ID
+        scope: RUN_TIME
+        type: SECRET
+      - key: AWS_SECRET_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: AWS_REGION
+        scope: RUN_TIME
+        type: SECRET
+      - key: AWS_S3_BUCKET
+        scope: RUN_TIME
+        type: SECRET
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+
+  # Frontend Service
+  - name: client
+    source_dir: client
+    github:
+      repo: KoiralaSam/Remindly
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile
+    http_port: 80
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /
+    health_check:
+      http_path: /
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+    envs:
+      - key: VITE_API_BASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${backend.PUBLIC_URL}/api
+    depends_on:
+      - backend
