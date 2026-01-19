@@ -1,6 +1,10 @@
 // API Configuration
+// Handle empty string for relative URLs (App Platform uses same domain for frontend/backend)
+const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  VITE_API_BASE_URL !== undefined
+    ? VITE_API_BASE_URL // Use provided value (even if empty string for relative URLs)
+    : "http://localhost:8080"; // Default for local development
 const API_AUTH_URL = import.meta.env.VITE_API_AUTH_URL || "/api/auth";
 const API_GROUP_URL = import.meta.env.VITE_API_GROUP_URL || "/api/groups";
 

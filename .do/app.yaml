@@ -82,9 +82,11 @@ services:
       success_threshold: 1
       failure_threshold: 3
     envs:
+      # Use empty string for relative URLs since both services share the same domain in App Platform
+      # The API paths already include /api prefix, so we just need the domain (empty = same domain)
       - key: VITE_API_BASE_URL
         scope: RUN_AND_BUILD_TIME
-        value: ${backend.PUBLIC_URL}/api
+        value: ""
     depends_on:
       - backend
 # HTTPS Configuration
