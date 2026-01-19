@@ -129,8 +129,18 @@ export const WebSocketProvider = ({
       // Clean the token - remove "Bearer " prefix if present
       const cleanToken = token.replace(/^Bearer\s+/i, "").trim();
 
-      const protocol = apiConfig.baseURL.startsWith("https") ? "wss" : "ws";
-      const host = apiConfig.baseURL.replace(/^https?:\/\//, "");
+      // If API_BASE_URL is empty (relative URLs in production), use current origin
+      let protocol: string;
+      let host: string;
+      if (!apiConfig.baseURL || apiConfig.baseURL === "") {
+        // Production: use current origin with wss/ws based on page protocol
+        protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        host = window.location.host;
+      } else {
+        // Local dev: use API_BASE_URL
+        protocol = apiConfig.baseURL.startsWith("https") ? "wss" : "ws";
+        host = apiConfig.baseURL.replace(/^https?:\/\//, "");
+      }
 
       // OPTION 1: Pass token as query parameter (most reliable)
       const wsUrl = `${protocol}://${host}/api/groups/${groupId}/ws/joinRoom/${groupId}?token=${encodeURIComponent(

@@ -16,8 +16,13 @@ func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler, signalingHan
 	})
 
 	// Authentication Routes (no root handler - let frontend handle /)
+	// These must be defined BEFORE the authenticated group to avoid middleware conflicts
+	// App Platform strips /api prefix, so we need routes without /api for production
 	server.POST("/api/auth/register", handlers.RegisterUser)
 	server.POST("/api/auth/login", handlers.Login)
+	// Also register without /api prefix for App Platform (where prefix is stripped)
+	server.POST("/auth/register", handlers.RegisterUser)
+	server.POST("/auth/login", handlers.Login)
 
 	authenticated := server.Group("/api")
 	authenticated.Use(middleware.AuthMiddleware())
