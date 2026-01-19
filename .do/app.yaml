@@ -15,6 +15,7 @@ services:
     instance_size_slug: basic-xxs
     routes:
       - path: /api
+        preserve_path_prefix: true
     health_check:
       http_path: /api/users/me
       initial_delay_seconds: 30
@@ -22,6 +23,7 @@ services:
       timeout_seconds: 5
       success_threshold: 1
       failure_threshold: 3
+    # HTTPS is automatically enabled by App Platform for all routes
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
@@ -83,3 +85,10 @@ services:
         value: ${backend.PUBLIC_URL}/api
     depends_on:
       - backend
+# HTTPS Configuration
+# App Platform automatically provides HTTPS for all routes
+# To enable custom domain with HTTPS:
+# 1. Go to App Platform dashboard → Settings → Domains
+# 2. Add your custom domain
+# 3. App Platform will automatically provision Let's Encrypt certificate
+# 4. Update CORS_ORIGINS to include your custom domain

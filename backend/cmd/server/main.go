@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -157,10 +159,84 @@ func main() {
 
 	routes.SetupRoutes(server, wsHandler, signalingHandler)
 
-	err = server.Run(":8080")
-	if err != nil {
-		log.Fatalf("Error running server: %v", err)
+	// Check if HTTPS certificates are provided
+	certPath := os.Getenv("CERT_PATH")
+	keyPath := os.Getenv("KEY_PATH")
+	httpsPort := os.Getenv("HTTPS_PORT")
+	httpPort := os.Getenv("HTTP_PORT")
+
+	// If certificates are provided, start HTTPS server with HTTP redirect
+	if certPath != "" && keyPath != "" {
+		if httpsPort == "" {
+			httpsPort = "443"
+		}
+		if httpPort == "" {
+			httpPort = "80"
+		}
+
+		// Check if certificates exist
+		if _, err := os.Stat(certPath); os.IsNotExist(err) {
+			log.Fatalf("Certificate file not found: %s", certPath)
+		}
+		if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+			log.Fatalf("Private key file not found: %s", keyPath)
+		}
+
+		// Create HTTP server for redirecting to HTTPS
+		httpServer := &http.Server{
+			Addr:    ":" + httpPort,
+			Handler: http.HandlerFunc(redirectToHTTPS),
+		}
+
+		// Create HTTPS server
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+
+		httpsServer := &http.Server{
+			Addr:      ":" + httpsPort,
+			Handler:   server,
+			TLSConfig: tlsConfig,
+		}
+
+		// Start HTTP redirect server in a goroutine
+		go func() {
+			log.Printf("HTTP redirect server starting on port %s", httpPort)
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("HTTP redirect server failed: %v", err)
+			}
+		}()
+
+		// Start HTTPS server
+		log.Printf("HTTPS server starting on port %s with certificates: %s, %s", httpsPort, certPath, keyPath)
+		if err := httpsServer.ListenAndServeTLS(certPath, keyPath); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTPS server failed: %v", err)
+		}
+	} else {
+		// Fallback to HTTP if no certificates provided
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+		log.Printf("No certificates provided, starting HTTP server on port %s", port)
+		err = server.Run(":" + port)
+		if err != nil {
+			log.Fatalf("Error running server: %v", err)
+		}
+	}
+}
+
+// redirectToHTTPS redirects all HTTP traffic to HTTPS
+func redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
+	// Get the host from the request
+	host := r.Host
+	if host == "" {
+		host = r.Header.Get("Host")
 	}
 
-	log.Println("Server is running on port 8080")
+	// Build HTTPS URL
+	httpsURL := "https://" + host + r.RequestURI
+
+	// Redirect with 301 (Permanent Redirect)
+	http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
 }

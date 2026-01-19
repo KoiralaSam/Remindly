@@ -1,0 +1,72 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.https
+    container_name: remindly-backend-https
+    ports:
+      - "443:443" # HTTPS
+      - "80:80" # HTTP (redirects to HTTPS)
+    volumes:
+      # Mount Let's Encrypt certificates
+      - ./certs:/root/certs:ro
+      # Optional: mount migrations if you want to update them without rebuilding
+      - ./backend/migrations:/root/migrations:ro
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://localhost}
+      - APP_URL=${APP_URL:-https://localhost}
+      - SENDGRID_EMAIL_API_KEY=${SENDGRID_EMAIL_API_KEY}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL}
+      - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - JWT_SECRET=${JWT_SECRET}
+      # HTTPS configuration
+      - CERT_PATH=/root/certs/fullchain.pem
+      - KEY_PATH=/root/certs/privkey.pem
+      - HTTPS_PORT=443
+      - HTTP_PORT=80
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "https://localhost:443/api/users/me",
+          "--no-check-certificate",
+          "||",
+          "exit",
+          "1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - remindly-network
+
+  # Optional: Client service (if you want to serve frontend separately)
+  client:
+    build: ./client
+    container_name: remindly-client-https
+    ports:
+      - "8080:80" # Internal port 80, exposed as 8080
+    depends_on:
+      - backend
+    restart: unless-stopped
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://localhost/api}
+    networks:
+      - remindly-network
+
+networks:
+  remindly-network:
+    driver: bridge
