@@ -127,8 +127,10 @@ func main() {
 
 	server := gin.Default()
 
-	// Trust proxies for App Platform (set trusted proxies)
-	server.SetTrustedProxies([]string{"127.0.0.1", "::1"})
+	// Trust proxies for App Platform
+	// App Platform uses load balancers, so we need to trust all proxies
+	// This allows X-Forwarded-* headers to work correctly
+	server.SetTrustedProxies(nil) // Trust all proxies in App Platform
 	hub := WS.NewHub()
 	signalingHub := WS.NewSignalingHub()
 	wsHandler := handlers.NewHandler(hub)
@@ -140,22 +142,39 @@ func main() {
 	// Configure CORS middleware - allow multiple origins from environment
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
-		corsOrigins = "http://localhost:5173,http://localhost:80"
+		// Default to allowing all origins in production (App Platform)
+		// For production, set CORS_ORIGINS environment variable explicitly
+		corsOrigins = "*"
 	}
 
-	origins := []string{}
-	for _, origin := range strings.Split(corsOrigins, ",") {
-		origins = append(origins, strings.TrimSpace(origin))
+	var corsConfig cors.Config
+	if corsOrigins == "*" {
+		// Allow all origins (useful for API-only deployments)
+		corsConfig = cors.Config{
+			AllowAllOrigins:  true,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+			ExposeHeaders:    []string{"Content-Length"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}
+	} else {
+		// Use specific origins
+		origins := []string{}
+		for _, origin := range strings.Split(corsOrigins, ",") {
+			origins = append(origins, strings.TrimSpace(origin))
+		}
+		corsConfig = cors.Config{
+			AllowOrigins:     origins,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+			ExposeHeaders:    []string{"Content-Length"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}
 	}
 
-	server.Use(cors.New(cors.Config{
-		AllowOrigins:     origins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	server.Use(cors.New(corsConfig))
 
 	routes.SetupRoutes(server, wsHandler, signalingHandler)
 
