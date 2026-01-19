@@ -118,7 +118,15 @@ func main() {
 	// Start the scheduler
 	scheduler.Start()
 
+	// Set Gin to release mode in production
+	if os.Getenv("GIN_MODE") == "" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	server := gin.Default()
+
+	// Trust proxies for App Platform (set trusted proxies)
+	server.SetTrustedProxies([]string{"127.0.0.1", "::1"})
 	hub := WS.NewHub()
 	signalingHub := WS.NewSignalingHub()
 	wsHandler := handlers.NewHandler(hub)
