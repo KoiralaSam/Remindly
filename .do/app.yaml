@@ -1,7 +1,7 @@
 name: remindly
 region: nyc
 
-# Backend Service
+# Backend Service (must come first for route priority)
 services:
   - name: backend
     source_dir: backend
@@ -15,6 +15,8 @@ services:
     instance_size_slug: basic-xxs
     routes:
       - path: /api
+        preserve_path_prefix: true
+      - path: /ws
         preserve_path_prefix: true
     health_check:
       http_path: /api/users/me
