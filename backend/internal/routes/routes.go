@@ -7,6 +7,14 @@ import (
 )
 
 func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler, signalingHandler *handlers.SignalingHandler) {
+	// Root handler - prevents 404 logs and provides health check
+	server.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"service": "remindly-backend",
+			"status":  "ok",
+		})
+	})
+
 	// Authentication Routes
 	server.POST("/api/auth/register", handlers.RegisterUser)
 	server.POST("/api/auth/login", handlers.Login)
