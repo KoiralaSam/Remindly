@@ -1,7 +1,6 @@
 import { FC } from "react";
 import { Phone, PhoneOff, Video, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSidebar } from "@/context/SidebarContext";
 
 interface IncomingCallNotificationProps {
   callerName: string;

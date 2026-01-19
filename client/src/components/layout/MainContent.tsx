@@ -4,11 +4,11 @@ import { SignalingContext, SignalingMessage } from "@/context/SignalingContext";
 import { GroupMessages } from "@/components/groups/GroupMessages";
 import { GroupTasks } from "@/components/tasks/GroupTasks";
 import { InvitationsView } from "@/components/invitations/InvitationsView";
+import { NotificationsView } from "@/components/notifications/NotificationsView";
 import { ContentHeader } from "@/components/layout/ContentHeader";
 import { DirectMessages } from "@/components/messages/DirectMessages";
 import { VideoCall } from "../calls/VideoCall";
 import { IncomingCallNotification } from "../calls/IncomingCallNotification";
-import { useUser } from "@/context/UserContext";
 
 export const MainContent: FC = () => {
   const {
@@ -23,9 +23,7 @@ export const MainContent: FC = () => {
     setIncomingCall,
   } = useSidebar();
 
-  const { connect, isConnected, setOnMessage, sendSignal } =
-    useContext(SignalingContext);
-  const { user } = useUser();
+  const { connect, setOnMessage, sendSignal } = useContext(SignalingContext);
   const incomingCallRef = useRef(false);
   const handlerSetRef = useRef(false);
 
@@ -247,16 +245,7 @@ export const MainContent: FC = () => {
             messagesSubTab === "invitations" ? (
               <InvitationsView />
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <p className="text-muted-foreground mb-2">
-                    No messages to display
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Messages content coming soon
-                  </p>
-                </div>
-              </div>
+              <NotificationsView />
             )
           ) : (
             <div className="flex items-center justify-center h-full">

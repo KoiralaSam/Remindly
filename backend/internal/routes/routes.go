@@ -74,6 +74,26 @@ func SetupRoutes(server *gin.Engine, wsHandler *handlers.WShandler, signalingHan
 	authenticatedGroupMember.GET("/tasks/:taskId/notifications", handlers.GetTaskNotifications)
 
 	// Notification Routes (direct access by ID)
+	authenticated.GET("/notifications", handlers.GetUserNotifications)
 	authenticated.PATCH("/notifications/:id", handlers.UpdateNotification)
 	authenticated.DELETE("/notifications/:id", handlers.DeleteNotification)
+
+	// File Routes
+	authenticatedGroupMember.POST("/files", handlers.UploadFile)
+	authenticatedGroupMember.GET("/files", handlers.GetFiles)
+	authenticatedGroupMember.GET("/files/:fileID", handlers.GetFileInfo)
+	authenticatedGroupMember.GET("/files/:fileID/download", handlers.GetFileDownloadURL)
+	authenticatedGroupMember.DELETE("/files/:fileID", handlers.DeleteFile)
+
+	// Folder Routes
+	authenticatedGroupMember.POST("/folders", handlers.CreateFolder)
+	authenticatedGroupMember.GET("/folders", handlers.GetFolders)
+	authenticatedGroupMember.GET("/folders/:folderID", handlers.GetFolder)
+	authenticatedGroupMember.DELETE("/folders/:folderID", handlers.DeleteFolder)
+
+	// Link Routes
+	authenticatedGroupMember.POST("/links", handlers.CreateLink)
+	authenticatedGroupMember.GET("/links", handlers.GetLinks)
+	authenticatedGroupMember.GET("/links/:linkID", handlers.GetLink)
+	authenticatedGroupMember.DELETE("/links/:linkID", handlers.DeleteLink)
 }

@@ -1,6 +1,31 @@
+# Environment files
 *.env
-*.md
+*.env.local
+*.env.*.local
 
-node_modules
+# Dependencies
+node_modules/
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Test files
 api-test
+
+# But allow documentation and deployment guides
+!.github/
+!DEPLOYMENT.md
+!GITHUB_DEPLOYMENT.md

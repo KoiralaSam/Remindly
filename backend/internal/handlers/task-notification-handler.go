@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -257,4 +258,20 @@ func DeleteNotification(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Notification deleted successfully"})
+}
+
+// GetUserNotifications retrieves all notifications for the current user
+// GET /api/notifications
+func GetUserNotifications(ctx *gin.Context) {
+	userID := ctx.GetString("userID")
+
+	notifications, err := models.GetNotificationsByUserID(ctx.Request.Context(), userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("Failed to fetch notifications: %v", err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"notifications": notifications})
 }

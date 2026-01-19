@@ -102,6 +102,44 @@ func GetNotificationsByTaskID(ctx context.Context, taskID string) ([]TaskNotific
 	return notifications, nil
 }
 
+// GetNotificationsByUserID retrieves all notifications for a user
+func GetNotificationsByUserID(ctx context.Context, userID string) ([]TaskNotification, error) {
+	query := `SELECT id, task_id, user_id, notification_type, scheduled_at, sent_at, status, retry_count, created_at, updated_at 
+	          FROM task_notifications 
+	          WHERE user_id = $1 
+	          ORDER BY created_at DESC
+	          LIMIT 100`
+
+	rows, err := db.GetDB().Query(ctx, query, userID)
+	if err != nil {
+		return nil, errors.New("failed to get user notifications: " + err.Error())
+	}
+	defer rows.Close()
+
+	var notifications []TaskNotification
+	for rows.Next() {
+		var notification TaskNotification
+		err := rows.Scan(
+			&notification.ID,
+			&notification.TaskID,
+			&notification.UserID,
+			&notification.NotificationType,
+			&notification.ScheduledAt,
+			&notification.SentAt,
+			&notification.Status,
+			&notification.RetryCount,
+			&notification.CreatedAt,
+			&notification.UpdatedAt,
+		)
+		if err != nil {
+			return nil, errors.New("failed to scan notification: " + err.Error())
+		}
+		notifications = append(notifications, notification)
+	}
+
+	return notifications, nil
+}
+
 func (tn *TaskNotification) Update(ctx context.Context) error {
 	query := `UPDATE task_notifications 
 	          SET notification_type = $1, scheduled_at = $2, status = $3, retry_count = $4, updated_at = NOW() 
@@ -131,5 +169,93 @@ func (tn *TaskNotification) Delete(ctx context.Context) error {
 		return errors.New("failed to delete task notification: " + err.Error())
 	}
 
+	return nil
+}
+
+func GetPendingNotifications(ctx context.Context, beforeTime time.Time) ([]TaskNotification, error) {
+	query := `
+        SELECT id, task_id, user_id, notification_type, scheduled_at, sent_at, status, retry_count, created_at, updated_at
+        FROM task_notifications
+        WHERE status = 'pending'
+          AND scheduled_at <= $1
+        ORDER BY scheduled_at ASC
+        LIMIT 100`
+
+	rows, err := db.GetDB().Query(ctx, query, beforeTime)
+	if err != nil {
+		return nil, errors.New("failed to get pending notifications: " + err.Error())
+	}
+	defer rows.Close()
+
+	var notifications []TaskNotification
+	for rows.Next() {
+		var notification TaskNotification
+		err := rows.Scan(
+			&notification.ID,
+			&notification.TaskID,
+			&notification.UserID,
+			&notification.NotificationType,
+			&notification.ScheduledAt,
+			&notification.SentAt,
+			&notification.Status,
+			&notification.RetryCount,
+			&notification.CreatedAt,
+			&notification.UpdatedAt,
+		)
+		if err != nil {
+			return nil, errors.New("failed to scan notification: " + err.Error())
+		}
+		notifications = append(notifications, notification)
+	}
+
+	return notifications, nil
+}
+
+// Mark as sent the notification
+func (tn *TaskNotification) MarkAsSent(ctx context.Context) error {
+	now := time.Now()
+	query := `
+        UPDATE task_notifications
+        SET status = 'sent', sent_at = $1, updated_at = NOW()
+        WHERE id = $2
+        RETURNING sent_at, updated_at`
+
+	err := db.GetDB().QueryRow(ctx, query, now, tn.ID).Scan(&tn.SentAt, &tn.UpdatedAt)
+	if err != nil {
+		return errors.New("failed to mark notification as sent: " + err.Error())
+	}
+	tn.Status = "sent"
+	return nil
+}
+
+// NotificationExists checks if a notification of a specific type already exists for a task/user combination
+func NotificationExists(ctx context.Context, taskID, userID, notificationType string) (bool, error) {
+	query := `SELECT COUNT(*) 
+	          FROM task_notifications 
+	          WHERE task_id = $1 AND user_id = $2 AND notification_type = $3`
+
+	var count int
+	err := db.GetDB().QueryRow(ctx, query, taskID, userID, notificationType).Scan(&count)
+	if err != nil {
+		return false, errors.New("failed to check notification existence: " + err.Error())
+	}
+
+	return count > 0, nil
+}
+
+//Mark as failed the notification
+
+func (tn *TaskNotification) MarkAsFailed(ctx context.Context) error {
+	query := `
+        UPDATE task_notifications
+        SET status = 'failed', retry_count = retry_count + 1, updated_at = NOW()
+        WHERE id = $1
+        RETURNING retry_count, updated_at`
+
+	err := db.GetDB().QueryRow(ctx, query, tn.ID).Scan(&tn.RetryCount, &tn.UpdatedAt)
+	if err != nil {
+		return errors.New("failed to mark notification as failed: " + err.Error())
+	}
+	tn.Status = "failed"
 	return nil
 }

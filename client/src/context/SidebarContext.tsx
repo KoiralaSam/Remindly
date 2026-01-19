@@ -9,7 +9,7 @@ export type SidebarTab =
   | "private-space"
   | null;
 
-export type MessagesSubTab = "messages" | "invitations";
+export type MessagesSubTab = "notifications" | "invitations";
 export type GroupSubTab = "messages" | "tasks";
 export type CallType = "audio" | "video" | null;
 
@@ -54,11 +54,11 @@ interface SidebarProviderProps {
 export const SidebarProvider: React.FC<SidebarProviderProps> = ({
   children,
 }) => {
-  const [activeTab, setActiveTab] = useState<SidebarTab>("groups");
+  const [activeTab, setActiveTab] = useState<SidebarTab>("private-space");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [messagesSubTab, setMessagesSubTab] =
-    useState<MessagesSubTab>("messages");
+    useState<MessagesSubTab>("notifications");
   const [groupSubTab, setGroupSubTab] = useState<GroupSubTab>("messages");
   const [callType, setCallType] = useState<CallType>(null);
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);

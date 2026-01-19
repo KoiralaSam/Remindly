@@ -29,6 +29,10 @@ import { InviteUserModal } from "@/components/groups/InviteUserModal";
 import { AddTaskModal } from "@/components/tasks/AddTaskModal";
 import { DeleteTaskModal } from "@/components/tasks/DeleteTaskModal";
 import { ViewMembersModal } from "@/components/groups/ViewMembersModal";
+import { ViewMediaFilesModal } from "@/components/groups/ViewMediaFilesModal";
+import { FileUploadModal } from "@/components/files/FileUploadModal";
+import { FolderModal } from "@/components/files/FolderModal";
+import { LinkModal } from "@/components/files/LinkModal";
 import { apiConfig } from "@/config/api";
 
 export const ContentHeader: FC = () => {
@@ -48,6 +52,11 @@ export const ContentHeader: FC = () => {
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const [isViewMembersModalOpen, setIsViewMembersModalOpen] = useState(false);
+  const [isViewMediaFilesModalOpen, setIsViewMediaFilesModalOpen] =
+    useState(false);
+  const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isCallMenuOpen, setIsCallMenuOpen] = useState(false);
@@ -89,12 +98,25 @@ export const ContentHeader: FC = () => {
   const handlePlusMenuAction = (action: string) => {
     setIsPlusMenuOpen(false);
 
-    if (action === "task") {
-      setIsAddTaskModalOpen(true);
-    } else if (action === "delete-task") {
-      setIsDeleteTaskModalOpen(true);
+    switch (action) {
+      case "task":
+        setIsAddTaskModalOpen(true);
+        break;
+      case "delete-task":
+        setIsDeleteTaskModalOpen(true);
+        break;
+      case "file":
+        setIsFileUploadModalOpen(true);
+        break;
+      case "folder":
+        setIsFolderModalOpen(true);
+        break;
+      case "link":
+        setIsLinkModalOpen(true);
+        break;
+      default:
+        break;
     }
-    // Handle other actions here
   };
 
   const selectedGroup = selectedGroupId
@@ -183,6 +205,9 @@ export const ContentHeader: FC = () => {
       case "view-members":
         setIsViewMembersModalOpen(true);
         break;
+      case "view-media-files":
+        setIsViewMediaFilesModalOpen(true);
+        break;
       case "leave-group":
         handleLeaveGroup();
         break;
@@ -215,6 +240,26 @@ export const ContentHeader: FC = () => {
         <ViewMembersModal
           isOpen={isViewMembersModalOpen}
           onClose={() => setIsViewMembersModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <ViewMediaFilesModal
+          isOpen={isViewMediaFilesModalOpen}
+          onClose={() => setIsViewMediaFilesModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FileUploadModal
+          isOpen={isFileUploadModalOpen}
+          onClose={() => setIsFileUploadModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FolderModal
+          isOpen={isFolderModalOpen}
+          onClose={() => setIsFolderModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <LinkModal
+          isOpen={isLinkModalOpen}
+          onClose={() => setIsLinkModalOpen(false)}
           groupId={selectedGroup.id}
         />
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
@@ -389,6 +434,26 @@ export const ContentHeader: FC = () => {
           onClose={() => setIsViewMembersModalOpen(false)}
           groupId={selectedGroup.id}
         />
+        <ViewMediaFilesModal
+          isOpen={isViewMediaFilesModalOpen}
+          onClose={() => setIsViewMediaFilesModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FileUploadModal
+          isOpen={isFileUploadModalOpen}
+          onClose={() => setIsFileUploadModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FolderModal
+          isOpen={isFolderModalOpen}
+          onClose={() => setIsFolderModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <LinkModal
+          isOpen={isLinkModalOpen}
+          onClose={() => setIsLinkModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-semibold text-foreground">
@@ -513,6 +578,26 @@ export const ContentHeader: FC = () => {
         <ViewMembersModal
           isOpen={isViewMembersModalOpen}
           onClose={() => setIsViewMembersModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <ViewMediaFilesModal
+          isOpen={isViewMediaFilesModalOpen}
+          onClose={() => setIsViewMediaFilesModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FileUploadModal
+          isOpen={isFileUploadModalOpen}
+          onClose={() => setIsFileUploadModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FolderModal
+          isOpen={isFolderModalOpen}
+          onClose={() => setIsFolderModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <LinkModal
+          isOpen={isLinkModalOpen}
+          onClose={() => setIsLinkModalOpen(false)}
           groupId={selectedGroup.id}
         />
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">
@@ -689,6 +774,13 @@ export const ContentHeader: FC = () => {
                     <Users className="h-4 w-4" />
                     <span>View team members</span>
                   </button>
+                  <button
+                    onClick={() => handleMoreMenuAction("view-media-files")}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>View media, files and links</span>
+                  </button>
                   <div className="border-t border-border my-1"></div>
                   <button
                     onClick={() => handleMoreMenuAction("edit-group")}
@@ -734,13 +826,13 @@ export const ContentHeader: FC = () => {
           <div className="flex items-center gap-1 border-l border-border pl-4">
             <button
               className={`px-3 py-1 text-sm font-medium transition-colors ${
-                messagesSubTab === "messages"
+                messagesSubTab === "notifications"
                   ? "text-foreground border-b-2 border-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              onClick={() => setMessagesSubTab("messages")}
+              onClick={() => setMessagesSubTab("notifications")}
             >
-              Messages
+              Notifications
             </button>
             <button
               className={`px-3 py-1 text-sm font-medium transition-colors ${
@@ -814,6 +906,26 @@ export const ContentHeader: FC = () => {
         <ViewMembersModal
           isOpen={isViewMembersModalOpen}
           onClose={() => setIsViewMembersModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <ViewMediaFilesModal
+          isOpen={isViewMediaFilesModalOpen}
+          onClose={() => setIsViewMediaFilesModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FileUploadModal
+          isOpen={isFileUploadModalOpen}
+          onClose={() => setIsFileUploadModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <FolderModal
+          isOpen={isFolderModalOpen}
+          onClose={() => setIsFolderModalOpen(false)}
+          groupId={selectedGroup.id}
+        />
+        <LinkModal
+          isOpen={isLinkModalOpen}
+          onClose={() => setIsLinkModalOpen(false)}
           groupId={selectedGroup.id}
         />
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background">

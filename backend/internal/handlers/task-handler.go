@@ -89,6 +89,30 @@ func CreateTask(hub *WS.Hub) gin.HandlerFunc {
 			}
 		}
 
+		// Create notifications for all assignees when task is created
+		go func() {
+			notificationCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			assignments, err := models.GetTaskAssignments(notificationCtx, task.ID)
+			if err != nil {
+				// Log error but don't block response
+				return
+			}
+
+			// Create "assignment" notification for each assignee (scheduled for immediate send)
+			for _, assignment := range assignments {
+				notification := models.TaskNotification{
+					TaskID:           task.ID,
+					UserID:           assignment.UserID,
+					NotificationType: "assignment",
+					ScheduledAt:      time.Now(), // Send immediately
+					Status:           "pending",
+				}
+				_ = notification.Save(notificationCtx) // Log errors but don't block
+			}
+		}()
+
 		// Send WebSocket notification
 		username := ctx.GetString("username")
 		if username == "" {
@@ -310,16 +334,91 @@ func UpdateTask(ctx *gin.Context) {
 		return
 	}
 
-	// If user is not owner or admin, set status to pending (requires approval)
-	status := requestBody.Status
-	if role != "owner" && role != "admin" {
-		status = "pending"
+	// Validate status - only allow: pending, rejected, active, completed, cancelled
+	validStatuses := map[string]bool{
+		"pending":   true,
+		"rejected":  true,
+		"active":    true,
+		"completed": true,
+		"cancelled": true,
+	}
+	if !validStatuses[requestBody.Status] {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid status. Must be one of: pending, rejected, active, completed, cancelled"})
+		return
 	}
 
-	err = models.UpdateTask(ctx.Request.Context(), taskID, requestBody.Title, requestBody.Description, requestBody.DueDate, status)
+	// Only owners and admins can set status (except members can set back to pending)
+	finalStatus := requestBody.Status
+	if role != "owner" && role != "admin" {
+		// Non-admins can only set status to "pending" (to request status change)
+		if requestBody.Status != "pending" {
+			ctx.JSON(http.StatusForbidden, gin.H{"error": "only admins and owners can set task status to: " + requestBody.Status})
+			return
+		}
+		// Keep their requested status if it's pending
+		finalStatus = "pending"
+	}
+
+	// Check what fields are actually changing
+	statusChanged := taskCheck.Status != finalStatus
+	titleChanged := taskCheck.Title != requestBody.Title
+	descriptionChanged := taskCheck.Description != requestBody.Description
+
+	// Parse due date from request to compare
+	var newDueDate time.Time
+	if requestBody.DueDate != "" {
+		newDueDate, err = time.Parse(time.RFC3339, requestBody.DueDate)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid due_date format. Expected RFC3339"})
+			return
+		}
+	}
+	// Compare due dates (normalize to same timezone for comparison)
+	dueDateChanged := !taskCheck.DueDate.Equal(newDueDate)
+
+	// Determine if any non-status field changed
+	otherFieldsChanged := titleChanged || descriptionChanged || dueDateChanged
+
+	// Update task
+	err = models.UpdateTask(ctx.Request.Context(), taskID, requestBody.Title, requestBody.Description, requestBody.DueDate, finalStatus)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Create notifications if any field changed (only for admin/owner)
+	if (statusChanged || otherFieldsChanged) && (role == "owner" || role == "admin") {
+		go func() {
+			notificationCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			// Get all assignees for the task
+			assignments, err := models.GetTaskAssignments(notificationCtx, taskID)
+			if err != nil {
+				// Log error but don't block response
+				return
+			}
+
+			// Determine notification type:
+			// - If only status changed (and nothing else) → "status_change"
+			// - If anything else changed (including status + other fields) → "update"
+			notificationType := "update"
+			if statusChanged && !otherFieldsChanged {
+				notificationType = "status_change"
+			}
+
+			// Create notification for each assignee (scheduled for immediate send)
+			for _, assignment := range assignments {
+				notification := models.TaskNotification{
+					TaskID:           taskID,
+					UserID:           assignment.UserID,
+					NotificationType: notificationType,
+					ScheduledAt:      time.Now(), // Send immediately
+					Status:           "pending",
+				}
+				_ = notification.Save(notificationCtx) // Log errors but don't block
+			}
+		}()
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Task updated successfully"})

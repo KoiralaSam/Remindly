@@ -62,4 +62,45 @@ export const apiConfig = {
       return `${protocol}://${host}/api/groups/${groupId}/ws/signaling/${finalRoomId}`;
     },
   },
+  files: {
+    upload: (groupId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/files`,
+    list: (groupId: string, folderId?: string) => {
+      const base = `${API_BASE_URL}${API_GROUP_URL}/${groupId}/files`;
+      return folderId ? `${base}?folder_id=${folderId}` : base;
+    },
+    info: (groupId: string, fileId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/files/${fileId}`,
+    download: (groupId: string, fileId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/files/${fileId}/download`,
+    delete: (groupId: string, fileId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/files/${fileId}`,
+  },
+  folders: {
+    create: (groupId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/folders`,
+    list: (groupId: string, parentId?: string) => {
+      const base = `${API_BASE_URL}${API_GROUP_URL}/${groupId}/folders`;
+      return parentId ? `${base}?parent_id=${parentId}` : base;
+    },
+    get: (groupId: string, folderId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/folders/${folderId}`,
+    delete: (groupId: string, folderId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/folders/${folderId}`,
+  },
+  links: {
+    create: (groupId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/links`,
+    list: (groupId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/links`,
+    get: (groupId: string, linkId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/links/${linkId}`,
+    delete: (groupId: string, linkId: string) =>
+      `${API_BASE_URL}${API_GROUP_URL}/${groupId}/links/${linkId}`,
+  },
+  notifications: {
+    list: `${API_BASE_URL}/api/notifications`,
+    update: (id: string) => `${API_BASE_URL}/api/notifications/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/api/notifications/${id}`,
+  },
 };

@@ -4,22 +4,32 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/KoiralaSam/Remindly/backend/internal/WS"
 	"github.com/KoiralaSam/Remindly/backend/internal/db"
 	"github.com/KoiralaSam/Remindly/backend/internal/handlers"
 	"github.com/KoiralaSam/Remindly/backend/internal/routes"
+	"github.com/KoiralaSam/Remindly/backend/internal/services"
+	"github.com/KoiralaSam/Remindly/backend/internal/utils"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	//connect to database
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+	// Try .env in current directory first (Docker), then relative path (local dev)
+	var envErr error
+	if err := godotenv.Load(".env"); err != nil {
+		if err := godotenv.Load("../../.env"); err != nil {
+			envErr = err
+		}
+	}
+	if envErr != nil {
+		log.Fatalf("Error loading .env file: %v", envErr)
 	}
 
 	DB_URL := os.Getenv("DATABASE_URL")
@@ -28,7 +38,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	err = db.InitDB(ctx, DB_URL)
+	err := db.InitDB(ctx, DB_URL)
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
 	}
@@ -40,12 +50,63 @@ func main() {
 	}
 	defer migrationDB.Close()
 
-	err = db.RunMigrations(migrationDB, "../../migrations")
+	// Try migrations in current directory first (Docker), then relative path (local dev)
+	migrationPath := "migrations"
+	if _, err := os.Stat(migrationPath); err != nil {
+		migrationPath = "../../migrations"
+	}
+	err = db.RunMigrations(migrationDB, migrationPath)
 	if err != nil {
 		log.Fatalf("Error running migrations: %v", err)
 	}
 
 	defer db.GetDB().Close()
+
+	// Initialize S3 service (optional - only if AWS credentials are set)
+	if err := handlers.InitS3Service(); err != nil {
+		log.Printf("Warning: S3 service not initialized: %v (file uploads will not work)", err)
+	} else {
+		log.Println("S3 service initialized successfully")
+	}
+
+	//initialize email service'
+
+	if err := utils.InitEmailService(); err != nil {
+		log.Printf("Warning: Email service not initialized: %v (notifications will not be sent)", err)
+	} else {
+		log.Println("Email service initialized successfully")
+	}
+
+	//initialize gocron scheduler
+	scheduler, err := gocron.NewScheduler()
+	if err != nil {
+		log.Fatalf("Error initializing scheduler: %v", err)
+	}
+	defer scheduler.Shutdown()
+
+	// Schedule notification sender job to run every minute
+	job, err := scheduler.NewJob(
+		gocron.DurationJob(time.Minute),
+		gocron.NewTask(func() {
+			ctx := context.Background()
+			// Check for due dates and reminders, create pending notifications
+			if err := services.CheckDueDatesAndReminders(ctx); err != nil {
+				log.Printf("Error checking due dates and reminders: %v", err)
+			}
+			// Send pending notifications
+			if err := services.SendPendingNotifications(ctx); err != nil {
+				log.Printf("Error sending pending notifications: %v", err)
+			}
+		}),
+	)
+	if err != nil {
+		log.Fatalf("Error scheduling notification job: %v", err)
+	}
+
+	log.Printf("Notification sender job scheduled: %s", job.ID())
+
+	// Start the scheduler
+	scheduler.Start()
 
 	server := gin.Default()
 	hub := WS.NewHub()
@@ -56,9 +117,19 @@ func main() {
 	go hub.Run()
 	go signalingHub.Run()
 
-	// Configure CORS middleware
+	// Configure CORS middleware - allow multiple origins from environment
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	if corsOrigins == "" {
+		corsOrigins = "http://localhost:5173,http://localhost:80"
+	}
+
+	origins := []string{}
+	for _, origin := range strings.Split(corsOrigins, ",") {
+		origins = append(origins, strings.TrimSpace(origin))
+	}
+
 	server.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

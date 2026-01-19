@@ -149,7 +149,7 @@ export const InviteUserModal: FC<InviteUserModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 pointer-events-auto">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 pointer-events-auto">
       <div className="bg-background border border-border rounded-lg shadow-2xl w-full max-w-sm p-6 pointer-events-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

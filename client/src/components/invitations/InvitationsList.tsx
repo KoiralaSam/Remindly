@@ -34,7 +34,7 @@ export const InvitationsList: FC<InvitationsListProps> = ({
     try {
       setProcessing(invitation.id);
       const response = await fetch(
-        apiConfig.invitations.accept(invitation.group_id, invitation.id),
+        apiConfig.invitations.accept(invitation.id),
         {
           method: "POST",
           headers: {
@@ -69,7 +69,7 @@ export const InvitationsList: FC<InvitationsListProps> = ({
     try {
       setProcessing(invitation.id);
       const response = await fetch(
-        apiConfig.invitations.decline(invitation.group_id, invitation.id),
+        apiConfig.invitations.decline(invitation.id),
         {
           method: "POST",
           headers: {
