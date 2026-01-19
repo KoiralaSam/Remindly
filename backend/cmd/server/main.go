@@ -48,14 +48,26 @@ func main() {
 	}
 	defer migrationDB.Close()
 
-	// Try migrations in current directory first (Docker), then relative path (local dev)
+	// Try migrations in current directory first (Docker/App Platform), then relative path (local dev)
 	migrationPath := "migrations"
 	if _, err := os.Stat(migrationPath); err != nil {
-		migrationPath = "../../migrations"
+		// Try relative path for local development
+		if _, err := os.Stat("../../migrations"); err == nil {
+			migrationPath = "../../migrations"
+		} else {
+			// If neither exists, log error but don't fail (migrations might be in a different location)
+			log.Printf("Warning: migrations directory not found in 'migrations' or '../../migrations'. Continuing without migrations.")
+			migrationPath = ""
+		}
 	}
-	err = db.RunMigrations(migrationDB, migrationPath)
-	if err != nil {
-		log.Fatalf("Error running migrations: %v", err)
+
+	if migrationPath != "" {
+		err = db.RunMigrations(migrationDB, migrationPath)
+		if err != nil {
+			log.Fatalf("Error running migrations: %v", err)
+		}
+	} else {
+		log.Printf("Skipping migrations - directory not found")
 	}
 
 	defer db.GetDB().Close()
