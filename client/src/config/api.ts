@@ -59,10 +59,16 @@ export const apiConfig = {
   },
   signaling: {
     ws: (groupId: string, roomId?: string) => {
-      const protocol = API_BASE_URL.startsWith("https") ? "wss" : "ws";
-      const host = API_BASE_URL.replace(/^https?:\/\//, "");
       // Use groupId as roomId if roomId not provided (they're the same in our case)
       const finalRoomId = roomId || groupId;
+      // If API_BASE_URL is empty (relative URLs), use current origin with wss/ws protocol
+      if (!API_BASE_URL || API_BASE_URL === "") {
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        return `${protocol}://${window.location.host}/api/groups/${groupId}/ws/signaling/${finalRoomId}`;
+      }
+      // For absolute URLs (local dev)
+      const protocol = API_BASE_URL.startsWith("https") ? "wss" : "ws";
+      const host = API_BASE_URL.replace(/^https?:\/\//, "");
       return `${protocol}://${host}/api/groups/${groupId}/ws/signaling/${finalRoomId}`;
     },
   },

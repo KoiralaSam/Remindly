@@ -1,26 +1,42 @@
 name: remindly
 region: nyc
 
-# Backend Service (must come first for route priority)
+ingress:
+  rules:
+    # Backend handles /api and /ws routes
+    - component:
+        name: remindly-backend
+      match:
+        path:
+          prefix: /api
+    - component:
+        name: remindly-backend
+      match:
+        path:
+          prefix: /ws
+    - component:
+        name: remindly-backend
+      match:
+        path:
+          prefix: /health
+    # Frontend handles everything else (catch-all)
+    - component:
+        name: remindly-client
+      match:
+        path:
+          prefix: /
+
 services:
-  - name: backend
+  - name: remindly-backend
     source_dir: backend
     github:
       repo: KoiralaSam/Remindly
       branch: main
       deploy_on_push: true
-    dockerfile_path: Dockerfile
+    dockerfile_path: backend/Dockerfile
     http_port: 8080
     instance_count: 1
     instance_size_slug: basic-xxs
-    routes:
-      # Backend only handles /api and /ws routes
-      - path: /api
-        preserve_path_prefix: true
-      - path: /ws
-        preserve_path_prefix: true
-      - path: /health
-        preserve_path_prefix: true
     health_check:
       http_path: /health
       initial_delay_seconds: 30
@@ -28,7 +44,6 @@ services:
       timeout_seconds: 5
       success_threshold: 1
       failure_threshold: 3
-    # HTTPS is automatically enabled by App Platform for all routes
     envs:
       - key: DATABASE_URL
         scope: RUN_TIME
@@ -64,20 +79,16 @@ services:
         scope: RUN_TIME
         type: SECRET
 
-  # Frontend Service (must come after backend for route priority)
-  - name: client
+  - name: remindly-client
     source_dir: client
     github:
       repo: KoiralaSam/Remindly
       branch: main
       deploy_on_push: true
-    dockerfile_path: Dockerfile
+    dockerfile_path: client/Dockerfile
     http_port: 80
     instance_count: 1
     instance_size_slug: basic-xxs
-    routes:
-      # Catch-all route - handles everything except /api and /ws (which go to backend)
-      - path: /
     health_check:
       http_path: /
       initial_delay_seconds: 30
@@ -86,17 +97,7 @@ services:
       success_threshold: 1
       failure_threshold: 3
     envs:
-      # Use empty string for relative URLs since both services share the same domain in App Platform
-      # The API paths already include /api prefix, so we just need the domain (empty = same domain)
+      # Use empty string for relative URLs - frontend and backend share same domain
       - key: VITE_API_BASE_URL
         scope: RUN_AND_BUILD_TIME
         value: ""
-    depends_on:
-      - backend
-# HTTPS Configuration
-# App Platform automatically provides HTTPS for all routes
-# To enable custom domain with HTTPS:
-# 1. Go to App Platform dashboard → Settings → Domains
-# 2. Add your custom domain
-# 3. App Platform will automatically provision Let's Encrypt certificate
-# 4. Update CORS_ORIGINS to include your custom domain
